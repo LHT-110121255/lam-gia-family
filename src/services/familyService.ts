@@ -1617,6 +1617,41 @@ class FamilyService {
   }
 
   private chatSocketInitialized = false;
+  private processedMsgIds = new Set<string>();
+  private receiveMessageCleanup: (() => void) | null = null;
+
+  public syncMessagesFromBackend(roomId: string): void {
+    import('./api').then(({ api }) => {
+      (api as any).getMessages?.(roomId).then((remoteMsgs: any[]) => {
+        if (!Array.isArray(remoteMsgs) || remoteMsgs.length === 0) return;
+        const all = load<Record<string, ChatMessage[]>>('chatMessages', INITIAL_MESSAGES);
+        const mapped: ChatMessage[] = remoteMsgs.map((m: any) => ({
+          id: m._id?.toString() || m.id,
+          roomId: m.roomId || roomId,
+          senderId: m.senderId,
+          text: m.text || '',
+          type: (m.isPriorityPing ? 'priority' : 'text') as ChatMessage['type'],
+          priority: !!m.isPriorityPing,
+          mediaUrl: m.mediaUrl,
+          timestamp: m.createdAt
+            ? new Date(m.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+            : '',
+          readBy: m.readBy || [m.senderId],
+          reactions: [],
+        }));
+        // Loại trùng theo id
+        const seen = new Set<string>();
+        const deduped = mapped.filter(m => {
+          if (seen.has(m.id)) return false;
+          seen.add(m.id);
+          return true;
+        });
+        all[roomId] = deduped;
+        save('chatMessages', all);
+        this.notify();
+      }).catch(() => { /* Backend chưa có endpoint này, bỏ qua */ });
+    });
+  }
 
   public initChatSocket(): void {
     if (this.chatSocketInitialized) return;
@@ -1628,28 +1663,39 @@ class FamilyService {
     const rooms = this.getChatRooms();
     rooms.forEach((r) => socketService.joinRoom(r.id));
 
+    // Cleanup listener cũ nếu có
+    if (this.receiveMessageCleanup) {
+      this.receiveMessageCleanup();
+      this.receiveMessageCleanup = null;
+    }
+
     // Listen for incoming realtime messages from other family members
-    socketService.onReceiveMessage((incomingMsg: any) => {
+    this.receiveMessageCleanup = socketService.onReceiveMessage((incomingMsg: any) => {
       if (!incomingMsg || !incomingMsg.roomId) return;
       const currentMember = this.getCurrentMember();
       const realId = incomingMsg._id ? incomingMsg._id.toString() : (incomingMsg.id || '');
-      const clientTempId = incomingMsg.clientTempId;
+      const clientTempId = incomingMsg.clientTempId || incomingMsg.tempId;
+
+      // Chặn trùng bằng Set trong bộ nhớ (quan trọng nhất)
+      if (realId && this.processedMsgIds.has(realId)) return;
+      if (realId) this.processedMsgIds.add(realId);
 
       const all = load<Record<string, ChatMessage[]>>('chatMessages', INITIAL_MESSAGES);
       const roomMsgs = all[incomingMsg.roomId] || [];
 
-      // Kiểm tra nếu tin nhắn đã tồn tại
-      if (realId && roomMsgs.some((m) => m.id === realId)) {
-        return;
-      }
+      // Kiểm tra nếu tin nhắn đã tồn tại trong storage (realId hoặc clientTempId)
+      if (realId && roomMsgs.some((m) => m.id === realId)) return;
+      if (clientTempId && roomMsgs.some((m) => m.id === clientTempId && m.id !== clientTempId)) return;
 
       // Tìm và thay thế tin nhắn tạm thời của chính người gửi (Optimistic message)
       let replaced = false;
       const updatedRoomMsgs = roomMsgs.map((m) => {
-        if (
+        const isTempMatch =
           (clientTempId && m.id === clientTempId) ||
-          (m.id.startsWith('temp-msg-') && m.senderId === incomingMsg.senderId && m.text === incomingMsg.text)
-        ) {
+          (m.id.startsWith('temp-msg-') &&
+            m.senderId === incomingMsg.senderId &&
+            m.text?.trim() === incomingMsg.text?.trim());
+        if (isTempMatch) {
           replaced = true;
           return {
             ...m,
@@ -1759,11 +1805,17 @@ class FamilyService {
       if (!newPost) return;
       const id = newPost._id || newPost.id;
       const posts = this.getPosts();
+
+      // Nếu đã có bài với id thật này rồi thì bỏ qua
       if (posts.some((p) => p.id === id)) return;
 
-      // Loại bỏ bài viết tạm thời optimistic có cùng nội dung nếu có
+      // Xóa tất cả temp-post có cùng content và authorId để tránh hiện 2 lần
       const filtered = posts.filter((p) => {
-        if (p.id.startsWith('temp-post-') && p.content === newPost.content) {
+        if (
+          p.id.startsWith('temp-post-') &&
+          p.content?.trim() === newPost.content?.trim() &&
+          (p.authorId === newPost.authorId || !newPost.authorId)
+        ) {
           return false;
         }
         return true;

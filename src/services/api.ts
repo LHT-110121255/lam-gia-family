@@ -381,8 +381,17 @@ export const api = {
     }
   },
 
+  // 13. Lấy tin nhắn từ MongoDB theo roomId
+  async getMessages(roomId: string, limit = 100): Promise<any[]> {
+    try {
+      const response = await authFetch(`/messages/${encodeURIComponent(roomId)}?limit=${limit}`);
+      return await handleApiResponse(response);
+    } catch {
+      return [];
+    }
+  },
 
-  // 15. Admin: Lấy toàn bộ danh sách người dùng
+
   async getAdminUsers(): Promise<any[]> {
     try {
       const response = await fetch(`${API_BASE_URL}/admin/users`);

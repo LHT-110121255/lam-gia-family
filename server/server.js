@@ -1185,6 +1185,42 @@ app.delete("/api/posts/:id", async (req, res) => {
 });
 
 // ==========================================
+// 7.5 CHAT MESSAGES API
+// ==========================================
+
+// Lấy tin nhắn cũ của 1 phòng chat từ MongoDB
+app.get("/api/messages/:roomId", async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const limit = parseInt(req.query.limit) || 100;
+    const messages = await Message.find({ roomId })
+      .sort({ createdAt: 1 })
+      .limit(limit)
+      .select("-__v");
+    res.json(messages);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Xóa tin nhắn theo ID (REST API fallback)
+app.delete("/api/messages/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "ID tin nhắn không hợp lệ" });
+    }
+    await Message.findByIdAndUpdate(id, {
+      text: "Tin nhắn đã được thu hồi",
+      isDeleted: true,
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
 // 8. CALENDAR EVENTS API
 // ==========================================
 app.get("/api/events", async (req, res) => {

@@ -1670,9 +1670,26 @@ io.on("connection", (socket) => {
 
   socket.on("send_message", async (data) => {
     try {
-      const msg = new Message(data);
+      const msg = new Message({
+        roomId: data.roomId || "room-all",
+        senderId: data.senderId,
+        senderName: data.senderName,
+        senderAvatar: data.senderAvatar,
+        text: data.text,
+        mediaUrl: data.mediaUrl,
+        isPriorityPing: !!data.isPriorityPing,
+        readBy: data.readBy || [data.senderId],
+      });
       await msg.save();
-      io.to(data.roomId || "room-all").emit("receive_message", msg);
+
+      const responsePayload = {
+        ...msg.toObject(),
+        id: msg._id.toString(),
+        clientTempId: data.id || data.tempId,
+        timestamp: data.timestamp || new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      };
+
+      io.to(data.roomId || "room-all").emit("receive_message", responsePayload);
 
       if (data.isPriorityPing) {
         await sendPushNotificationToAll(
@@ -1683,6 +1700,18 @@ io.on("connection", (socket) => {
       }
     } catch (err) {
       console.error("Socket send_message error:", err);
+    }
+  });
+
+  socket.on("delete_message", async (data) => {
+    try {
+      const { roomId, messageId } = data;
+      if (messageId && mongoose.Types.ObjectId.isValid(messageId)) {
+        await Message.findByIdAndUpdate(messageId, { text: "Tin nhắn đã được thu hồi", isDeleted: true });
+      }
+      io.to(roomId || "room-all").emit("message_deleted", { roomId, messageId });
+    } catch (err) {
+      console.error("Socket delete_message error:", err);
     }
   });
 

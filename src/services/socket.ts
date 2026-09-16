@@ -45,6 +45,17 @@ class SocketService {
     };
   }
 
+  deleteMessage(roomId: string, messageId: string) {
+    this.socket?.emit("delete_message", { roomId, messageId });
+  }
+
+  onMessageDeleted(callback: (data: { roomId: string; messageId: string }) => void) {
+    this.socket?.on("message_deleted", callback);
+    return () => {
+      this.socket?.off("message_deleted", callback);
+    };
+  }
+
   onSOSAlert(callback: (alert: any) => void) {
     this.socket?.on("sos_alert", callback);
     return () => {

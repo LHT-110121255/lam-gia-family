@@ -1515,7 +1515,15 @@ class FamilyService {
 
   public getMessages(roomId: string): ChatMessage[] {
     const all = load<Record<string, ChatMessage[]>>('chatMessages', INITIAL_MESSAGES);
-    return all[roomId] || [];
+    const list = all[roomId] || [];
+    const seen = new Set<string>();
+    const deduplicated: ChatMessage[] = [];
+    for (const m of list) {
+      if (seen.has(m.id)) continue;
+      seen.add(m.id);
+      deduplicated.push(m);
+    }
+    return deduplicated;
   }
 
   public createChatRoom(room: {
@@ -1624,39 +1632,63 @@ class FamilyService {
     socketService.onReceiveMessage((incomingMsg: any) => {
       if (!incomingMsg || !incomingMsg.roomId) return;
       const currentMember = this.getCurrentMember();
+      const realId = incomingMsg._id ? incomingMsg._id.toString() : (incomingMsg.id || '');
+      const clientTempId = incomingMsg.clientTempId;
 
-      // Check if message is already stored locally to avoid duplicate
       const all = load<Record<string, ChatMessage[]>>('chatMessages', INITIAL_MESSAGES);
       const roomMsgs = all[incomingMsg.roomId] || [];
-      const msgId = incomingMsg.id || incomingMsg._id;
-      if (msgId && roomMsgs.some((m) => m.id === msgId)) {
+
+      // Kiểm tra nếu tin nhắn đã tồn tại
+      if (realId && roomMsgs.some((m) => m.id === realId)) {
         return;
       }
 
-      const formattedMsg: ChatMessage = {
-        id: msgId || 'msg-' + Date.now(),
-        roomId: incomingMsg.roomId,
-        senderId: incomingMsg.senderId,
-        text: incomingMsg.text,
-        type: incomingMsg.type || 'text',
-        priority: !!incomingMsg.priority || !!incomingMsg.isPriorityPing,
-        mediaUrl: incomingMsg.mediaUrl,
-        mediaUrls: incomingMsg.mediaUrls,
-        replyTo: incomingMsg.replyTo,
-        timestamp: incomingMsg.timestamp || new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-        readBy: [incomingMsg.senderId],
-        reactions: incomingMsg.reactions || [],
-      };
+      // Tìm và thay thế tin nhắn tạm thời của chính người gửi (Optimistic message)
+      let replaced = false;
+      const updatedRoomMsgs = roomMsgs.map((m) => {
+        if (
+          (clientTempId && m.id === clientTempId) ||
+          (m.id.startsWith('temp-msg-') && m.senderId === incomingMsg.senderId && m.text === incomingMsg.text)
+        ) {
+          replaced = true;
+          return {
+            ...m,
+            id: realId || m.id,
+            timestamp: incomingMsg.timestamp || m.timestamp,
+            reactions: incomingMsg.reactions || m.reactions || [],
+          };
+        }
+        return m;
+      });
 
-      all[incomingMsg.roomId] = [...roomMsgs, formattedMsg];
+      if (!replaced) {
+        const formattedMsg: ChatMessage = {
+          id: realId || 'msg-' + Date.now(),
+          roomId: incomingMsg.roomId,
+          senderId: incomingMsg.senderId,
+          text: incomingMsg.text,
+          type: incomingMsg.type || 'text',
+          priority: !!incomingMsg.priority || !!incomingMsg.isPriorityPing,
+          mediaUrl: incomingMsg.mediaUrl,
+          mediaUrls: incomingMsg.mediaUrls,
+          replyTo: incomingMsg.replyTo,
+          timestamp: incomingMsg.timestamp || new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+          readBy: [incomingMsg.senderId],
+          reactions: incomingMsg.reactions || [],
+        };
+        all[incomingMsg.roomId] = [...updatedRoomMsgs, formattedMsg];
+      } else {
+        all[incomingMsg.roomId] = updatedRoomMsgs;
+      }
+
       save('chatMessages', all);
 
       // Update room preview & increment unread count for other members
-      const previewText = formattedMsg.type === 'image' || formattedMsg.mediaUrls?.length
+      const previewText = incomingMsg.type === 'image' || incomingMsg.mediaUrls?.length
         ? '📷 [Hình ảnh]'
-        : formattedMsg.type === 'voice'
+        : incomingMsg.type === 'voice'
         ? '🎤 [Tin nhắn thoại]'
-        : formattedMsg.text;
+        : incomingMsg.text;
 
       const updatedRooms = this.getChatRooms().map((r) => {
         if (r.id !== incomingMsg.roomId) return r;
@@ -1664,12 +1696,28 @@ class FamilyService {
         return {
           ...r,
           lastMessage: previewText,
-          lastMessageTime: formattedMsg.timestamp,
+          lastMessageTime: incomingMsg.timestamp || new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
           unreadCount: isFromOther ? (r.unreadCount || 0) + 1 : (r.unreadCount || 0),
         };
       });
       save('chatRooms', updatedRooms);
 
+      this.notify();
+    });
+
+    // Listen for message deletion/recall
+    socketService.onMessageDeleted(({ roomId, messageId }) => {
+      if (!roomId || !messageId) return;
+      const all = load<Record<string, ChatMessage[]>>('chatMessages', INITIAL_MESSAGES);
+      const roomMessages = all[roomId] || [];
+      const updated = roomMessages.map((m) => {
+        if (m.id === messageId) {
+          return { ...m, isDeleted: true, text: 'Tin nhắn đã được thu hồi' };
+        }
+        return m;
+      });
+      all[roomId] = updated;
+      save('chatMessages', all);
       this.notify();
     });
 
@@ -1772,9 +1820,10 @@ class FamilyService {
     const now = new Date();
     const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
     const currentMember = this.getMemberById(message.senderId) || this.getCurrentMember();
+    const tempId = 'temp-msg-' + Date.now();
 
     const newMsg: ChatMessage = {
-      id: 'msg-' + Date.now(),
+      id: tempId,
       roomId,
       senderId: message.senderId,
       text: message.text,
@@ -1812,6 +1861,7 @@ class FamilyService {
     socketService.joinRoom(roomId);
     socketService.sendMessage({
       ...newMsg,
+      tempId,
       isPriorityPing: newMsg.priority,
       senderName: currentMember?.name || 'Người thân',
     });
@@ -1843,6 +1893,9 @@ class FamilyService {
     all[roomId] = updated;
     save('chatMessages', all);
     this.notify();
+
+    // Broadcast delete event via socket
+    socketService.deleteMessage(roomId, messageId);
   }
 
   public pinMessage(roomId: string, messageId: string, text: string): void {

@@ -133,14 +133,32 @@ try {
 const vapidPublicKey = vapidKeys.publicKey;
 
 // Connect to MongoDB Atlas
-const MONGODB_URI =
+const rawMongoUri =
   process.env.MONGODB_URI ||
   "mongodb+srv://lamhuetrungdev:Lht080103*26@cluster0.fscgeyo.mongodb.net/family_hub?retryWrites=true&w=majority";
 
+// Format MongoDB URI safely (encode special characters in password if needed)
+const MONGODB_URI = rawMongoUri.trim();
+
 mongoose
-  .connect(MONGODB_URI)
-  .then(() => console.log("✅ Connected to MongoDB Atlas (family_hub)"))
-  .catch((err) => console.error("❌ MongoDB connection error:", err));
+  .connect(MONGODB_URI, {
+    serverSelectionTimeoutMS: 20000,
+    connectTimeoutMS: 20000,
+  })
+  .then(async () => {
+    console.log("✅ Connected to MongoDB Atlas (family_hub)");
+    try {
+      await ensureDefaultAccounts();
+    } catch (seedErr) {
+      console.warn("Initial accounts check notice:", seedErr.message);
+    }
+  })
+  .catch((err) => {
+    console.error("❌ MongoDB connection error:", err.message);
+    console.error(
+      "👉 Gợi ý: Hãy kiểm tra mục 'Network Access' trên MongoDB Atlas và thêm IP '0.0.0.0/0' (Allow Access from Anywhere) để Render có thể kết nối.",
+    );
+  });
 
 // Helper: Generate JWT Access & Refresh Tokens
 function generateTokens(user) {
@@ -173,9 +191,10 @@ async function authenticateToken(req, res, next) {
       : null;
 
   if (!token) {
-    return res
-      .status(401)
-      .json({ error: "Yêu cầu đăng nhập (Thiếu Access Token)", code: "NO_TOKEN" });
+    return res.status(401).json({
+      error: "Yêu cầu đăng nhập (Thiếu Access Token)",
+      code: "NO_TOKEN",
+    });
   }
 
   try {
@@ -183,9 +202,10 @@ async function authenticateToken(req, res, next) {
     const user = await User.findById(decoded.userId);
 
     if (!user || user.isActive === false) {
-      return res
-        .status(401)
-        .json({ error: "Tài khoản không tồn tại hoặc đã bị khóa", code: "USER_INACTIVE" });
+      return res.status(401).json({
+        error: "Tài khoản không tồn tại hoặc đã bị khóa",
+        code: "USER_INACTIVE",
+      });
     }
 
     req.user = user;
@@ -196,9 +216,10 @@ async function authenticateToken(req, res, next) {
         .status(401)
         .json({ error: "Phiên đăng nhập đã hết hạn", code: "TOKEN_EXPIRED" });
     }
-    return res
-      .status(403)
-      .json({ error: "Token không hợp lệ hoặc đã bị thay đổi", code: "INVALID_TOKEN" });
+    return res.status(403).json({
+      error: "Token không hợp lệ hoặc đã bị thay đổi",
+      code: "INVALID_TOKEN",
+    });
   }
 }
 
@@ -345,7 +366,11 @@ async function ensureDefaultAccounts() {
         await User.create(acc);
       } else {
         // Đảm bảo các tài khoản mẫu luôn có approvalStatus = 'approved' và admin đúng quyền
-        if (!exists.approvalStatus || exists.approvalStatus !== "approved" || exists.isAdmin !== acc.isAdmin) {
+        if (
+          !exists.approvalStatus ||
+          exists.approvalStatus !== "approved" ||
+          exists.isAdmin !== acc.isAdmin
+        ) {
           exists.approvalStatus = "approved";
           exists.isAdmin = acc.isAdmin;
           exists.isActive = true;
@@ -357,7 +382,6 @@ async function ensureDefaultAccounts() {
     console.error("Seed accounts error:", err);
   }
 }
-ensureDefaultAccounts();
 
 // --- API ENDPOINTS ---
 
@@ -397,9 +421,7 @@ app.post("/api/push/subscribe", async (req, res) => {
         $addToSet: { pushSubscriptions: subscription },
       });
     }
-    res
-      .status(201)
-      .json({ message: "Đăng ký nhận thông báo thành công" });
+    res.status(201).json({ message: "Đăng ký nhận thông báo thành công" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -455,7 +477,8 @@ app.post("/api/auth/login", async (req, res) => {
     // Kiểm tra trạng thái phê duyệt (Pending / Rejected)
     if (user.approvalStatus === "pending") {
       return res.status(403).json({
-        error: "Tài khoản của bạn đang chờ Admin Lâm Huệ Trung phê duyệt. Vui lòng quay lại sau.",
+        error:
+          "Tài khoản của bạn đang chờ Admin Lâm Huệ Trung phê duyệt. Vui lòng quay lại sau.",
         code: "PENDING_APPROVAL",
       });
     }
@@ -468,9 +491,10 @@ app.post("/api/auth/login", async (req, res) => {
     }
 
     if (user.isActive === false) {
-      return res
-        .status(403)
-        .json({ error: "Tài khoản này đã bị khóa. Vui lòng liên hệ Admin gia đình.", code: "USER_INACTIVE" });
+      return res.status(403).json({
+        error: "Tài khoản này đã bị khóa. Vui lòng liên hệ Admin gia đình.",
+        code: "USER_INACTIVE",
+      });
     }
 
     // So sánh mật khẩu băm bcrypt
@@ -503,7 +527,9 @@ app.post("/api/auth/login", async (req, res) => {
     });
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({ error: "Đã xảy ra lỗi máy chủ trong quá trình đăng nhập" });
+    res
+      .status(500)
+      .json({ error: "Đã xảy ra lỗi máy chủ trong quá trình đăng nhập" });
   }
 });
 
@@ -525,11 +551,9 @@ app.post("/api/auth/register", async (req, res) => {
   } = req.body;
 
   if (!username || !password || !name) {
-    return res
-      .status(400)
-      .json({
-        error: "Vui lòng điền đầy đủ Tên tài khoản, Mật khẩu và Họ tên",
-      });
+    return res.status(400).json({
+      error: "Vui lòng điền đầy đủ Tên tài khoản, Mật khẩu và Họ tên",
+    });
   }
 
   const cleanUsername = username.trim().toLowerCase();
@@ -549,11 +573,9 @@ app.post("/api/auth/register", async (req, res) => {
   try {
     const existing = await User.findOne({ username: cleanUsername });
     if (existing) {
-      return res
-        .status(400)
-        .json({
-          error: "Tên tài khoản này đã tồn tại, vui lòng chọn tên khác",
-        });
+      return res.status(400).json({
+        error: "Tên tài khoản này đã tồn tại, vui lòng chọn tên khác",
+      });
     }
 
     if (phone && phone.trim()) {
@@ -568,7 +590,8 @@ app.post("/api/auth/register", async (req, res) => {
     const assignedRole = role || "adult";
     let generation = 2;
     if (assignedRole === "elder") generation = 1;
-    else if (assignedRole === "child" || assignedRole === "teen") generation = 3;
+    else if (assignedRole === "child" || assignedRole === "teen")
+      generation = 3;
 
     const newUser = new User({
       username: cleanUsername,
@@ -669,7 +692,9 @@ app.post("/api/admin/users/:id/reject", async (req, res) => {
       return res.status(404).json({ error: "Không tìm thấy người dùng" });
     }
     if (user.isAdmin || user.username === "lamhuetrung") {
-      return res.status(400).json({ error: "Không thể từ chối tài khoản Quản trị viên" });
+      return res
+        .status(400)
+        .json({ error: "Không thể từ chối tài khoản Quản trị viên" });
     }
     user.approvalStatus = "rejected";
     await user.save();
@@ -701,7 +726,9 @@ app.patch("/api/admin/users/:id/status", async (req, res) => {
     }
 
     if (user.username === "lamhuetrung" && isActive === false) {
-      return res.status(400).json({ error: "Không thể vô hiệu hóa tài khoản Admin gốc" });
+      return res
+        .status(400)
+        .json({ error: "Không thể vô hiệu hóa tài khoản Admin gốc" });
     }
 
     if (typeof isActive === "boolean") user.isActive = isActive;
@@ -739,7 +766,9 @@ app.delete("/api/admin/users/:id", async (req, res) => {
       return res.status(404).json({ error: "Không tìm thấy người dùng" });
     }
     if (user.isAdmin || user.username === "lamhuetrung") {
-      return res.status(400).json({ error: "Không thể xóa tài khoản Quản trị viên" });
+      return res
+        .status(400)
+        .json({ error: "Không thể xóa tài khoản Quản trị viên" });
     }
 
     await User.findByIdAndDelete(id);
@@ -787,8 +816,13 @@ app.post("/api/auth/refresh", async (req, res) => {
     const tokens = generateTokens(user);
 
     // Thay thế token cũ bằng token mới trong DB
-    user.refreshTokens = user.refreshTokens.filter((t) => t.token !== refreshToken);
-    user.refreshTokens.push({ token: tokens.refreshToken, createdAt: new Date() });
+    user.refreshTokens = user.refreshTokens.filter(
+      (t) => t.token !== refreshToken,
+    );
+    user.refreshTokens.push({
+      token: tokens.refreshToken,
+      createdAt: new Date(),
+    });
     await user.save();
 
     res.json({
@@ -832,7 +866,9 @@ app.get("/api/auth/me", authenticateToken, (req, res) => {
 // ==========================================
 app.get("/api/users", async (req, res) => {
   try {
-    const users = await User.find().select("-password -refreshTokens").sort({ createdAt: 1 });
+    const users = await User.find()
+      .select("-password -refreshTokens")
+      .sort({ createdAt: 1 });
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -844,16 +880,20 @@ app.put("/api/users/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    
+
     // Xóa các trường không được update trực tiếp qua endpoint này
     delete updates.password;
     delete updates.refreshTokens;
 
     let user;
     if (mongoose.Types.ObjectId.isValid(id)) {
-      user = await User.findByIdAndUpdate(id, updates, { new: true }).select("-password -refreshTokens");
+      user = await User.findByIdAndUpdate(id, updates, { new: true }).select(
+        "-password -refreshTokens",
+      );
     } else {
-      user = await User.findOneAndUpdate({ username: id }, updates, { new: true }).select("-password -refreshTokens");
+      user = await User.findOneAndUpdate({ username: id }, updates, {
+        new: true,
+      }).select("-password -refreshTokens");
     }
 
     if (!user) {
@@ -894,7 +934,9 @@ app.post("/api/places", async (req, res) => {
 
 app.put("/api/places/:id", async (req, res) => {
   try {
-    const place = await Place.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const place = await Place.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+    });
     if (!place) {
       return res.status(404).json({ error: "Không tìm thấy địa điểm" });
     }
@@ -987,7 +1029,9 @@ app.post("/api/posts/:id/comment", async (req, res) => {
     const { id } = req.params;
     const { authorId, authorName, authorAvatar, content } = req.body;
     if (!content || !content.trim()) {
-      return res.status(400).json({ error: "Nội dung bình luận không được để trống" });
+      return res
+        .status(400)
+        .json({ error: "Nội dung bình luận không được để trống" });
     }
     const post = await findPostSafe(id);
     if (!post) {
@@ -1014,7 +1058,9 @@ app.put("/api/posts/:id/comments/:commentId", async (req, res) => {
     const { id, commentId } = req.params;
     const { content } = req.body;
     if (!content || !content.trim()) {
-      return res.status(400).json({ error: "Nội dung bình luận không được để trống" });
+      return res
+        .status(400)
+        .json({ error: "Nội dung bình luận không được để trống" });
     }
     const post = await findPostSafe(id);
     if (!post) {
@@ -1047,7 +1093,7 @@ app.delete("/api/posts/:id/comments/:commentId", async (req, res) => {
       return res.status(404).json({ error: "Không tìm thấy bài viết" });
     }
     post.comments = (post.comments || []).filter(
-      (c) => c._id?.toString() !== commentId && c.id !== commentId
+      (c) => c._id?.toString() !== commentId && c.id !== commentId,
     );
     await post.save();
     io.emit("post_updated", post);
@@ -1099,7 +1145,9 @@ app.put("/api/events/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const query = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { id };
-    const updated = await Event.findOneAndUpdate(query, req.body, { new: true });
+    const updated = await Event.findOneAndUpdate(query, req.body, {
+      new: true,
+    });
     if (updated) {
       io.emit("update_event", updated);
       res.json(updated);
@@ -1164,7 +1212,9 @@ app.put("/api/checklists/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const query = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { id };
-    const updated = await Checklist.findOneAndUpdate(query, req.body, { new: true });
+    const updated = await Checklist.findOneAndUpdate(query, req.body, {
+      new: true,
+    });
     if (updated) {
       io.emit("update_checklist", updated);
       res.json(updated);
@@ -1193,7 +1243,8 @@ app.post("/api/checklists/:id/items", async (req, res) => {
     const { id } = req.params;
     const query = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { id };
     const list = await Checklist.findOne(query);
-    if (!list) return res.status(404).json({ error: "Không tìm thấy danh sách" });
+    if (!list)
+      return res.status(404).json({ error: "Không tìm thấy danh sách" });
 
     list.items.push(req.body);
     await list.save();
@@ -1207,11 +1258,16 @@ app.post("/api/checklists/:id/items", async (req, res) => {
 app.put("/api/checklists/:listId/toggle/:itemId", async (req, res) => {
   try {
     const { listId, itemId } = req.params;
-    const query = mongoose.Types.ObjectId.isValid(listId) ? { _id: listId } : { id: listId };
+    const query = mongoose.Types.ObjectId.isValid(listId)
+      ? { _id: listId }
+      : { id: listId };
     const list = await Checklist.findOne(query);
-    if (!list) return res.status(404).json({ error: "Không tìm thấy danh sách" });
+    if (!list)
+      return res.status(404).json({ error: "Không tìm thấy danh sách" });
 
-    const item = list.items.find((i) => i.id === itemId || i._id?.toString() === itemId);
+    const item = list.items.find(
+      (i) => i.id === itemId || i._id?.toString() === itemId,
+    );
     if (item) {
       item.completed = !item.completed;
       if (req.body.completedBy) item.completedBy = req.body.completedBy;
@@ -1287,7 +1343,9 @@ app.put("/api/split-bills/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const query = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { id };
-    const updated = await SplitBill.findOneAndUpdate(query, req.body, { new: true });
+    const updated = await SplitBill.findOneAndUpdate(query, req.body, {
+      new: true,
+    });
     if (updated) {
       io.emit("update_split_bill", updated);
       res.json(updated);
@@ -1338,7 +1396,9 @@ app.put("/api/albums/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const query = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { id };
-    const updated = await Album.findOneAndUpdate(query, req.body, { new: true });
+    const updated = await Album.findOneAndUpdate(query, req.body, {
+      new: true,
+    });
     if (updated) {
       io.emit("update_album", updated);
       res.json(updated);
@@ -1369,7 +1429,9 @@ app.post("/api/albums/:id/photos", async (req, res) => {
     const album = await Album.findOne(query);
     if (!album) return res.status(404).json({ error: "Không tìm thấy album" });
 
-    const newPhotos = Array.isArray(req.body.photos) ? req.body.photos : [req.body];
+    const newPhotos = Array.isArray(req.body.photos)
+      ? req.body.photos
+      : [req.body];
     album.photos.push(...newPhotos);
     album.photoCount = album.photos.length;
     if (!album.coverUrl && newPhotos[0]?.url) {
@@ -1390,7 +1452,9 @@ app.delete("/api/albums/:id/photos/:photoId", async (req, res) => {
     const album = await Album.findOne(query);
     if (!album) return res.status(404).json({ error: "Không tìm thấy album" });
 
-    album.photos = album.photos.filter((p) => p.id !== photoId && p._id?.toString() !== photoId);
+    album.photos = album.photos.filter(
+      (p) => p.id !== photoId && p._id?.toString() !== photoId,
+    );
     album.photoCount = album.photos.length;
     await album.save();
     io.emit("update_album", album);
@@ -1464,7 +1528,8 @@ app.post("/api/polls/:id/vote", async (req, res) => {
     const { optionId, memberId } = req.body;
     const query = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { id };
     const poll = await Poll.findOne(query);
-    if (!poll) return res.status(404).json({ error: "Không tìm thấy bình chọn" });
+    if (!poll)
+      return res.status(404).json({ error: "Không tìm thấy bình chọn" });
 
     poll.options.forEach((opt) => {
       const isTarget = opt.id === optionId || opt._id?.toString() === optionId;
@@ -1533,8 +1598,6 @@ app.put("/api/family-info", async (req, res) => {
 // SOCKET.IO REALTIME EVENTS
 // ==========================================
 io.on("connection", (socket) => {
-  console.log("⚡ Client connected:", socket.id);
-
   socket.on("join_room", (roomId) => {
     socket.join(roomId);
   });

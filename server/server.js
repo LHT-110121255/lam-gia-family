@@ -869,13 +869,24 @@ app.get("/api/users", async (req, res) => {
     const users = await User.find()
       .select("-password -refreshTokens")
       .sort({ createdAt: 1 });
-    res.json(users);
+
+    const mapped = users.map((u) => {
+      const obj = u.toObject ? u.toObject() : u;
+      return {
+        ...obj,
+        id: obj._id ? obj._id.toString() : obj.id,
+        latitude: obj.location?.latitude !== undefined ? obj.location.latitude : obj.latitude,
+        longitude: obj.location?.longitude !== undefined ? obj.location.longitude : obj.longitude,
+        locationAddress: obj.location?.address || obj.address || '',
+      };
+    });
+    res.json(mapped);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Cập nhật thông tin thành viên (Avatar, Tên, SĐT, Email, Địa chỉ...)
+// Cập nhật thông tin thành viên (Avatar, Tên, SĐT, Email, Vị trí, Địa chỉ...)
 app.put("/api/users/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -885,25 +896,80 @@ app.put("/api/users/:id", async (req, res) => {
     delete updates.password;
     delete updates.refreshTokens;
 
-    let user;
+    const cleanId = (id || "").trim().toLowerCase();
+    const aliasMap = {
+      "member-trung": "lamhuetrung",
+      "member-thuc": "lamhuethuc",
+      "member-tri": "lamhuetri",
+      "member-gam": "honggam",
+    };
+    const targetUsername = aliasMap[cleanId] || cleanId;
+
+    let user = null;
     if (mongoose.Types.ObjectId.isValid(id)) {
-      user = await User.findByIdAndUpdate(id, updates, { new: true }).select(
-        "-password -refreshTokens",
-      );
-    } else {
-      user = await User.findOneAndUpdate({ username: id }, updates, {
-        new: true,
-      }).select("-password -refreshTokens");
+      user = await User.findById(id);
+    }
+    if (!user) {
+      user = await User.findOne({
+        $or: [
+          { username: cleanId },
+          { username: targetUsername },
+        ],
+      });
     }
 
     if (!user) {
       return res.status(404).json({ error: "Không tìm thấy người dùng" });
     }
 
-    // Phát sóng qua Socket.io để tất cả các tab và thiết bị cập nhật tức thì
-    io.emit("member_updated", user);
+    // Cập nhật vị trí nếu có
+    if (
+      updates.latitude !== undefined ||
+      updates.longitude !== undefined ||
+      updates.locationAddress !== undefined ||
+      updates.address !== undefined
+    ) {
+      user.location = {
+        latitude: typeof updates.latitude === 'number' ? updates.latitude : user.location?.latitude,
+        longitude: typeof updates.longitude === 'number' ? updates.longitude : user.location?.longitude,
+        address: updates.locationAddress || updates.address || user.location?.address || '',
+        updatedAt: new Date(),
+      };
+    }
 
-    res.json(user);
+    // Cập nhật các trường thông tin khác
+    const ignoreKeys = ['_id', 'id', 'password', 'refreshTokens'];
+    Object.keys(updates).forEach((k) => {
+      if (!ignoreKeys.includes(k) && updates[k] !== undefined) {
+        user[k] = updates[k];
+      }
+    });
+
+    await user.save();
+
+    const sanitized = user.toAuthJSON ? user.toAuthJSON() : user.toObject();
+    const responseData = {
+      ...sanitized,
+      id: user._id.toString(),
+      latitude: user.location?.latitude,
+      longitude: user.location?.longitude,
+      locationAddress: user.location?.address,
+    };
+
+    // Phát sóng qua Socket.io để tất cả các tab và thiết bị cập nhật tức thì
+    io.emit("member_updated", responseData);
+    io.emit("member_location_updated", {
+      userId: user._id.toString(),
+      username: user.username,
+      latitude: user.location?.latitude,
+      longitude: user.location?.longitude,
+      address: user.location?.address,
+      batteryLevel: user.batteryLevel,
+      onlineStatus: user.onlineStatus,
+      updatedAt: new Date(),
+    });
+
+    res.json(responseData);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1621,18 +1687,47 @@ io.on("connection", (socket) => {
   });
 
   socket.on("update_location", async (data) => {
-    const { userId, latitude, longitude, address } = data;
-    io.emit("member_location_updated", {
-      userId,
-      latitude,
-      longitude,
-      address,
-      updatedAt: new Date(),
-    });
-    if (userId && mongoose.Types.ObjectId.isValid(userId)) {
-      await User.findByIdAndUpdate(userId, {
-        location: { latitude, longitude, address, updatedAt: new Date() },
+    try {
+      const { userId, latitude, longitude, address } = data;
+      const cleanId = (userId || "").trim().toLowerCase();
+      const aliasMap = {
+        "member-trung": "lamhuetrung",
+        "member-thuc": "lamhuethuc",
+        "member-tri": "lamhuetri",
+        "member-gam": "honggam",
+      };
+      const targetUsername = aliasMap[cleanId] || cleanId;
+
+      let user = null;
+      if (mongoose.Types.ObjectId.isValid(userId)) {
+        user = await User.findById(userId);
+      }
+      if (!user) {
+        user = await User.findOne({
+          $or: [{ username: cleanId }, { username: targetUsername }],
+        });
+      }
+
+      if (user) {
+        user.location = {
+          latitude: typeof latitude === "number" ? latitude : user.location?.latitude,
+          longitude: typeof longitude === "number" ? longitude : user.location?.longitude,
+          address: address || user.location?.address || "",
+          updatedAt: new Date(),
+        };
+        await user.save();
+      }
+
+      io.emit("member_location_updated", {
+        userId: user ? user._id.toString() : userId,
+        username: user ? user.username : cleanId,
+        latitude,
+        longitude,
+        address,
+        updatedAt: new Date(),
       });
+    } catch (err) {
+      console.warn("Socket update_location warning:", err.message);
     }
   });
 

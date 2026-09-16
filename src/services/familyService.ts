@@ -517,8 +517,10 @@ class FamilyService {
   public updateMember(id: string, updates: Partial<FamilyMember>): FamilyMember | undefined {
     const members = this.getAllMembers();
     let updatedMember: FamilyMember | undefined;
+    const target = this.getMemberById(id);
+
     const nextMembers = members.map((m) => {
-      if (m.id === id) {
+      if (m.id === id || (target && m.id === target.id) || (target && m.username && m.username === target.username)) {
         updatedMember = { ...m, ...updates };
         return updatedMember;
       }
@@ -529,7 +531,8 @@ class FamilyService {
 
     // Gửi cập nhật lên backend MongoDB Atlas
     import('./api').then(({ api }) => {
-      api.updateUser(id, updates).catch((err) => console.warn('Update user remote note:', err));
+      const apiUserId = target ? ((target as any)._id || target.username || target.id) : id;
+      api.updateUser(apiUserId, updates).catch((err) => console.warn('Update user remote note:', err));
     });
 
     return updatedMember;

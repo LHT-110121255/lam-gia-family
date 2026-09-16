@@ -260,9 +260,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   };
 
   return (
-    <div className="w-full min-h-full flex flex-col bg-[#FFFBF7] text-stone-900">
+    <div className="w-full min-h-full flex-1 flex flex-col bg-[#FFFBF7] text-stone-900 overflow-y-auto overscroll-contain">
       {/* Top Mobile Bar */}
-      <div className="p-4 flex items-center justify-between">
+      <div className="p-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <img
             src="/logo.png"
@@ -282,7 +282,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       </div>
 
       {/* Main Container */}
-      <div className="flex-1 px-5 pt-2 pb-10 flex flex-col justify-between max-w-sm mx-auto w-full">
+      <div className="flex-1 px-5 pt-2 pb-24 flex flex-col justify-between max-w-sm mx-auto w-full">
         <div>
           {registrationPendingSuccess ? (
             /* ==================== REGISTRATION SUCCESS & PENDING APPROVAL SCREEN ==================== */

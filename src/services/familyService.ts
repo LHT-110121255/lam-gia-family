@@ -464,8 +464,7 @@ class FamilyService {
         (clean === 'member-trung' && (mUsername === 'lamhuetrung' || mId === 'member-trung')) ||
         (clean === 'member-thuc' && (mUsername === 'lamhuethuc' || mId === 'member-thuc')) ||
         (clean === 'member-tri' && (mUsername === 'lamhuetri' || mId === 'member-tri')) ||
-        (clean === 'member-gam' && (mUsername === 'honggam' || mId === 'member-gam')) ||
-        (clean === 'member-ha' && (mUsername === 'ngocha' || mId === 'member-ha'))
+        (clean === 'member-gam' && (mUsername === 'honggam' || mId === 'member-gam'))
       );
     });
   }

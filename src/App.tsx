@@ -382,7 +382,7 @@ export default function App() {
   if (settings.isLoggedIn === false) {
     return (
       <div className="flex justify-center bg-[#F7F4F0] min-h-[100dvh] w-full text-stone-900 font-sans">
-        <div className="w-full max-w-md bg-[#FFFBF7] min-h-[100dvh] flex flex-col shadow-2xl relative border-x border-stone-200/60 overflow-hidden">
+        <div className="w-full max-w-md bg-[#FFFBF7] min-h-[100dvh] h-[100dvh] flex flex-col shadow-2xl relative border-x border-stone-200/60 overflow-y-auto overscroll-contain">
           <OfflineIndicator />
           <Toast toasts={toasts} onDismiss={dismissToast} />
           <AuthScreen
@@ -390,6 +390,7 @@ export default function App() {
             familyName={familyInfo.name}
             onLoginSuccess={handleLoginSuccess}
             onRegisterSuccess={handleRegisterSuccess}
+            isModal={false}
           />
         </div>
       </div>

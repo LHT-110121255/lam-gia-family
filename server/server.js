@@ -335,26 +335,6 @@ const DEFAULT_ACCOUNTS = [
       "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&auto=format&fit=crop&q=80",
     status: "Siêu thị",
   },
-  {
-    username: "ngocha",
-    password: "12346",
-    name: "Nguyễn Thị Ngọc Hà",
-    relationship: "Chị dâu",
-    role: "adult",
-    gender: "female",
-    birthDate: "01/07/2000",
-    phone: "09xxxxx",
-    generation: 2,
-    jobTitle: "Công nhân",
-    email: "",
-    address: "số tre, Tiểu Cần, Vĩnh Long",
-    isAdmin: false,
-    approvalStatus: "approved",
-    isActive: true,
-    avatar:
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
-    status: "Ở nhà",
-  },
 ];
 
 async function ensureDefaultAccounts() {

@@ -1,0 +1,6 @@
+{
+  "name": "Lâm Gia",
+  "description": "Không gian số riêng tư dành cho gia đình Việt nhiều thế hệ — kết nối, kỷ niệm, lịch âm dương, việc chung, tài chính và an toàn gia đình.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

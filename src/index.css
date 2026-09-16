@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  html, body {
+    font-family: var(--font-sans);
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: contain;
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  /* Senior Mode accessibility mode */
+  html.senior-mode {
+    font-size: 118%;
+  }
+  html.senior-mode h1, html.senior-mode h2, html.senior-mode h3 {
+    font-weight: 800 !important;
+  }
+  html.senior-mode button {
+    min-height: 48px !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  html.senior-mode p, html.senior-mode span, html.senior-mode div {
+    line-height: 1.6 !important;
+  }
+
+  /* Large text accessibility mode */
+  .large-text {
+    font-size: 115%;
+  }
+  .large-text h1 {
+    font-size: 1.85rem !important;
+  }
+  .large-text h2 {
+    font-size: 1.5rem !important;
+  }
+  .large-text p, .large-text span, .large-text button, .large-text input {
+    font-size: 1.1rem !important;
+    line-height: 1.6 !important;
+  }
+  .large-text button {
+    min-height: 52px !important;
+  }
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(168, 162, 158, 0.3);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 162, 158, 0.5);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Safe area insets for notched mobile phones */
+.pb-safe {
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+}
+.pt-safe {
+  padding-top: max(12px, env(safe-area-inset-top, 12px));
+}
+

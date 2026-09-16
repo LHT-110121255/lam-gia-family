@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="warmGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EA580C" />
+      <stop offset="100%" stop-color="#C2410C" />
+    </linearGradient>
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FED7AA" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#FFEDD5" stop-opacity="0.1" />
+    </linearGradient>
+  </defs>
+  <!-- Background with subtle warm tone -->
+  <rect width="512" height="512" rx="112" fill="#FFFBF7" />
+  <circle cx="256" cy="256" r="180" fill="url(#glowGrad)" />
+  
+  <!-- Heart and Family Tree Motif -->
+  <g transform="translate(106, 106) scale(0.586)" fill="none" stroke="url(#warmGrad)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Roof / Sanctuary of Home -->
+    <path d="M70 240 L256 80 L442 240" />
+    <path d="M120 200 L120 400 Q120 430 150 430 L362 430 Q392 430 392 400 L392 200" />
+    <!-- Three interconnected family members / heart in hearth -->
+    <!-- Center Parent/Grandparent -->
+    <circle cx="256" cy="240" r="32" fill="#EA580C" stroke="none" />
+    <!-- Child Left -->
+    <circle cx="190" cy="290" r="26" fill="#EA580C" stroke="none" />
+    <!-- Child Right -->
+    <circle cx="322" cy="290" r="26" fill="#EA580C" stroke="none" />
+    <!-- Hearth cradle curve -->
+    <path d="M180 370 Q256 400 332 370" />
+    <path d="M210 330 Q256 360 302 330" />
+  </g>
+</svg>

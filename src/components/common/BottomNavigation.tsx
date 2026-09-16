@@ -29,8 +29,8 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   ];
 
   return (
-    <nav className="absolute bottom-0 left-0 right-0 z-40 bg-[#FFFBF7]/95 backdrop-blur-md border-t border-stone-200/80 pb-safe transition-all shadow-lg w-full">
-      <div className="w-full flex items-center justify-around px-2 py-1 relative">
+    <nav className="shrink-0 z-40 bg-[#FFFBF7]/95 backdrop-blur-md border-t border-stone-200/80 pb-safe transition-all shadow-lg w-full">
+      <div className="w-full flex items-center justify-around px-2 py-0.5 relative">
         {tabs.map((tab, idx) => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;

@@ -399,7 +399,7 @@ export default function App() {
 
   return (
     <div
-      className={`min-h-screen w-full bg-[#FDF8F3] text-stone-900 transition-colors overflow-x-hidden ${
+      className={`fixed inset-0 h-full h-[100dvh] w-full bg-[#FDF8F3] text-stone-900 transition-colors flex justify-center overflow-hidden ${
         settings.textMode === 'large' ? 'large-text' : ''
       }`}
     >
@@ -407,10 +407,10 @@ export default function App() {
       <Toast toasts={toasts} onDismiss={dismissToast} />
 
       {/* Main Container - Mobile Centered Frame */}
-      <div className="w-full max-w-md mx-auto h-screen h-[100dvh] bg-[#FFFBF7] shadow-xl border-x border-stone-200/60 relative flex flex-col overflow-hidden">
+      <div className="w-full max-w-md mx-auto h-full h-[100dvh] bg-[#FFFBF7] shadow-xl border-x border-stone-200/60 relative flex flex-col overflow-hidden">
         {/* Top Bar Header (Hidden in chat for maximum message view or kept clean) */}
         {!isInsideChat && (
-          <>
+          <div className="shrink-0 w-full">
             <TopBar
               familyInfo={familyInfo}
               currentMember={currentMember}
@@ -431,7 +431,7 @@ export default function App() {
               onOpenAuth={() => setIsAuthModalOpen(true)}
             />
             <PWAInstallBanner />
-          </>
+          </div>
         )}
 
         {/* SubScreen Breadcrumb Back Bar (when inside a deeper screen in "More", except Chat which has its own native header) */}
@@ -468,7 +468,7 @@ export default function App() {
           className={`flex-1 w-full min-h-0 overflow-x-hidden ${
             isFullScreenView
               ? 'flex flex-col overflow-y-hidden pb-0'
-              : 'overflow-y-auto pb-24 overscroll-y-contain'
+              : 'overflow-y-auto pb-6 overscroll-y-contain'
           }`}
         >
           <AnimatePresence mode="wait" initial={false}>

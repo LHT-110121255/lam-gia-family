@@ -27,7 +27,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <header className="sticky top-0 z-30 bg-[#FFFBF7]/95 backdrop-blur-md border-b border-stone-200/70 pt-safe px-4 py-2.5 transition-colors w-full">
+    <header className="shrink-0 z-30 bg-[#FFFBF7]/95 backdrop-blur-md border-b border-stone-200/70 pt-safe px-4 py-2 transition-colors w-full">
       <div className="flex items-center justify-between gap-3 w-full mx-auto">
         {/* Family Logo */}
         <button

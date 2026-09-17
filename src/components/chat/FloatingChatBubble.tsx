@@ -19,6 +19,7 @@ import { familyService } from '../../services/familyService';
 
 interface FloatingChatBubbleProps {
   rooms: ChatRoom[];
+  messages?: ChatMessage[];
   currentMember: FamilyMember;
   allMembers: FamilyMember[];
   activeRoomId: string;
@@ -29,6 +30,7 @@ interface FloatingChatBubbleProps {
 
 export const FloatingChatBubble: React.FC<FloatingChatBubbleProps> = ({
   rooms,
+  messages: propMessages,
   currentMember,
   allMembers,
   activeRoomId,
@@ -51,8 +53,8 @@ export const FloatingChatBubble: React.FC<FloatingChatBubbleProps> = ({
     memberIds: [],
   };
 
-  const messages = familyService.getMessages(activeRoom.id);
-  const recentMessages = messages.slice(-15); // Lấy 15 tin nhắn mới nhất để hiển thị nhanh
+  const currentMessages = propMessages && selectedRoomId === activeRoomId ? propMessages : familyService.getMessages(activeRoom.id);
+  const recentMessages = currentMessages.slice(-15); // Lấy 15 tin nhắn mới nhất để hiển thị nhanh
 
   const getMember = (memberId: string) => {
     return allMembers.find((m) => m.id === memberId);

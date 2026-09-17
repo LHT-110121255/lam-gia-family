@@ -614,7 +614,10 @@ export default function App() {
                   currentMember={currentMember}
                   allMembers={members}
                   activeRoomId={activeChatRoomId}
-                  onSelectRoom={(rId) => setActiveChatRoomId(rId)}
+                  onSelectRoom={(rId) => {
+                    familyService.enterRoom(rId);
+                    setActiveChatRoomId(rId);
+                  }}
                   onSendMessage={handleSendMessage}
                   onToggleReaction={handleToggleChatReaction}
                   onDeleteMessage={handleDeleteMessage}
@@ -659,6 +662,30 @@ export default function App() {
                       selectedMemberId={selectedMemberProfileId}
                       onSelectMember={(mId) => setSelectedMemberProfileId(mId)}
                       onStartChatWith={(mId) => {
+                        const targetMember = members.find((m) => m.id === mId);
+                        if (!targetMember) return;
+                        let directRoom = chatRooms.find(
+                          (r) =>
+                            r.type === 'direct' &&
+                            r.memberIds &&
+                            r.memberIds.length === 2 &&
+                            r.memberIds.includes(currentMember.id) &&
+                            r.memberIds.includes(mId)
+                        );
+                        if (!directRoom) {
+                          directRoom = familyService.createChatRoom({
+                            name: targetMember.name,
+                            type: 'direct',
+                            memberIds: [currentMember.id, mId],
+                            avatar: targetMember.avatar,
+                            description: `Trò chuyện riêng với ${targetMember.name}`,
+                          });
+                        }
+                        if (directRoom) {
+                          familyService.enterRoom(directRoom.id);
+                          setActiveChatRoomId(directRoom.id);
+                        }
+                        setSelectedMemberProfileId(null);
                         handleTabChange('chat');
                       }}
                       onUpdateFamilyInfo={(updatedInfo) => {
@@ -758,7 +785,10 @@ export default function App() {
                       currentMember={currentMember}
                       allMembers={members}
                       activeRoomId={activeChatRoomId}
-                      onSelectRoom={(rId) => setActiveChatRoomId(rId)}
+                      onSelectRoom={(rId) => {
+                        familyService.enterRoom(rId);
+                        setActiveChatRoomId(rId);
+                      }}
                       onSendMessage={handleSendMessage}
                       onToggleReaction={handleToggleChatReaction}
                       onDeleteMessage={handleDeleteMessage}
@@ -886,17 +916,24 @@ export default function App() {
         {/* Floating Chat Bubble (Intelligent Auto-Hide when in Chat, Map, or Fullscreen Modals to prevent occlusion) */}
         <FloatingChatBubble
           rooms={chatRooms}
+          messages={familyService.getMessages(activeChatRoomId)}
           currentMember={currentMember}
           allMembers={members}
           activeRoomId={activeChatRoomId}
-          onSelectRoom={(rId) => setActiveChatRoomId(rId)}
+          onSelectRoom={(rId) => {
+            familyService.enterRoom(rId);
+            setActiveChatRoomId(rId);
+          }}
           onOpenFullChat={(rId) => {
-            if (rId) setActiveChatRoomId(rId);
-            handleTabChange('more');
-            setSubScreen('chat');
+            if (rId) {
+              familyService.enterRoom(rId);
+              setActiveChatRoomId(rId);
+            }
+            handleTabChange('chat');
           }}
           hidden={
             isFullScreenView ||
+            mainTab === 'chat' ||
             (mainTab === 'more' && (subScreen === 'chat' || subScreen === 'map')) ||
             isQuickActionOpen ||
             isCreatePostOpen ||

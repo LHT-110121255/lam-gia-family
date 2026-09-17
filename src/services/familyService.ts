@@ -358,46 +358,7 @@ class FamilyService {
       this.notify();
     });
 
-    // 10. Lắng nghe Tin Nhắn Realtime (Chat Messages)
-    socketService.onReceiveMessage((msg) => {
-      if (!msg) return;
-      const roomId = msg.roomId || 'room-all';
-      const all = load<Record<string, ChatMessage[]>>('chatMessages', INITIAL_MESSAGES);
-      const messages = all[roomId] || [];
-      const id = msg._id || msg.id;
-
-      const tempId = msg.clientTempId;
-      const existsIndex = messages.findIndex((m) => m.id === id || (tempId && m.id === tempId));
-
-      let updatedMessages: ChatMessage[];
-      if (existsIndex >= 0) {
-        updatedMessages = [...messages];
-        updatedMessages[existsIndex] = {
-          ...updatedMessages[existsIndex],
-          ...msg,
-          id,
-        };
-      } else {
-        updatedMessages = [...messages, { ...msg, id }];
-      }
-
-      all[roomId] = updatedMessages;
-      save('chatMessages', all);
-
-      const rooms = this.getChatRooms();
-      const rIdx = rooms.findIndex((r) => r.id === roomId);
-      if (rIdx >= 0) {
-        rooms[rIdx] = {
-          ...rooms[rIdx],
-          lastMessage: msg.text || (msg.mediaUrl ? '[Hình ảnh]' : 'Tin nhắn mới'),
-          lastMessageTime: msg.timestamp || new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-        };
-        save('chat_rooms', rooms);
-      }
-
-      this.notify();
-    });
-
+    // 10. Lắng nghe Tin Nhắn Xóa / Đã Đọc Realtime (Message status)
     socketService.onMessageDeleted(({ roomId, messageId }) => {
       if (!messageId) return;
       const rId = roomId || 'room-all';
@@ -427,15 +388,19 @@ class FamilyService {
     // 11. Lắng nghe Phòng Chat Realtime (Rooms Realtime)
     socketService.onNewRoom((room) => {
       if (!room) return;
+      const currentMember = this.getCurrentMember();
       const rooms = this.getChatRooms();
       const id = room._id || room.id;
+      const memberIds = room.memberIds || [];
+      const isMember = room.type === 'all' || (currentMember && memberIds.includes(currentMember.id));
+
       if (!rooms.some((r) => r.id === id)) {
         const formatted: ChatRoom = {
           id,
           name: room.name,
           type: room.type || 'custom',
-          memberIds: room.memberIds || [],
-          adminIds: [room.createdById || ''],
+          memberIds,
+          adminIds: room.adminIds || [room.createdById || ''],
           createdById: room.createdById || '',
           avatar: room.avatar || '',
           description: room.description || '',
@@ -445,16 +410,45 @@ class FamilyService {
           createdAt: room.createdAt || new Date().toISOString(),
         };
         save('chatRooms', [formatted, ...rooms]);
+        if (isMember) {
+          socketService.joinRoom(id);
+        }
         this.notify();
       }
     });
 
     socketService.onUpdateRoom((room) => {
       if (!room) return;
+      const currentMember = this.getCurrentMember();
       const rooms = this.getChatRooms();
       const id = room._id || room.id;
-      const next = rooms.map((r) => (r.id === id ? { ...r, ...room, id } : r));
-      save('chatRooms', next);
+      const memberIds = room.memberIds || [];
+      const isMember = room.type === 'all' || (currentMember && memberIds.includes(currentMember.id));
+
+      const exists = rooms.some((r) => r.id === id);
+      if (exists) {
+        const next = rooms.map((r) => (r.id === id ? { ...r, ...room, id } : r));
+        save('chatRooms', next);
+      } else if (isMember) {
+        const formatted: ChatRoom = {
+          id,
+          name: room.name,
+          type: room.type || 'custom',
+          memberIds,
+          adminIds: room.adminIds || [room.createdById || ''],
+          createdById: room.createdById || '',
+          avatar: room.avatar || '',
+          description: room.description || '',
+          unreadCount: 0,
+          lastMessage: room.lastMessage || '',
+          lastMessageTime: room.lastMessageTime || '',
+          createdAt: room.createdAt || new Date().toISOString(),
+        };
+        save('chatRooms', [formatted, ...rooms]);
+      }
+      if (isMember) {
+        socketService.joinRoom(id);
+      }
       this.notify();
     });
 
@@ -2348,6 +2342,7 @@ class FamilyService {
     };
 
     save('chatRooms', [newRoom, ...rooms]);
+    socketService.joinRoom(newRoom.id);
 
     import('./api').then(({ api }) => {
       api.createRoom({
@@ -2364,6 +2359,7 @@ class FamilyService {
             r.id === newRoom.id ? { ...r, id: realId } : r
           );
           save('chatRooms', next);
+          socketService.joinRoom(realId);
           this.notify();
         }
       }).catch((err) => console.warn('Create room remote note:', err));
@@ -2729,6 +2725,7 @@ class FamilyService {
       tempId,
       isPriorityPing: newMsg.priority,
       senderName: currentMember?.name || 'Người thân',
+      senderAvatar: currentMember?.avatar || '',
     });
 
     this.notify();
@@ -2740,12 +2737,32 @@ class FamilyService {
   }
 
   public markRoomAsRead(roomId: string): void {
+    const currentMember = this.getCurrentMember();
     const rooms = this.getChatRooms().map((r) => {
       if (r.id !== roomId) return r;
       return { ...r, unreadCount: 0 };
     });
     save('chatRooms', rooms);
+
+    // Thông báo realtime đã đọc tin nhắn mới nhất
+    if (currentMember && roomId) {
+      const messages = this.getMessages(roomId);
+      if (messages.length > 0) {
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg && (!lastMsg.readBy || !lastMsg.readBy.includes(currentMember.id))) {
+          socketService.markMessageRead(roomId, lastMsg.id, currentMember.id);
+        }
+      }
+    }
+
     this.notify();
+  }
+
+  public enterRoom(roomId: string): void {
+    if (!roomId) return;
+    socketService.joinRoom(roomId);
+    this.markRoomAsRead(roomId);
+    this.syncMessagesFromBackend(roomId);
   }
 
   public deleteMessage(roomId: string, messageId: string): void {

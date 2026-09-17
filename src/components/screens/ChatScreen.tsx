@@ -186,9 +186,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
   // Scroll to bottom and mark room as read when messages change
   useEffect(() => {
-    if (viewMode === "room") {
-      socketService.joinRoom(activeRoom.id);
-      familyService.markRoomAsRead(activeRoom.id);
+    if (viewMode === "room" && activeRoom.id) {
+      familyService.enterRoom(activeRoom.id);
       if (messagesContainerRef.current) {
         messagesContainerRef.current.scrollTop =
           messagesContainerRef.current.scrollHeight;
@@ -280,10 +279,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     if (!newRoomName.trim() || newRoomSelectedMembers.length === 0) return;
 
     if (onCreateRoom) {
+      const allRoomMembers = Array.from(
+        new Set([currentMember.id, ...newRoomSelectedMembers]),
+      );
       onCreateRoom({
         name: newRoomName.trim(),
         type: newRoomType,
-        memberIds: newRoomSelectedMembers,
+        memberIds: allRoomMembers,
         description: newRoomDesc.trim() || undefined,
       });
     }
@@ -384,6 +386,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       const directRoom = rooms.find(
                         (r) =>
                           r.type === "direct" &&
+                          r.memberIds &&
+                          r.memberIds.includes(currentMember.id) &&
                           r.memberIds.includes(member.id),
                       );
                       if (directRoom) {
@@ -395,6 +399,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                           type: "direct",
                           memberIds: [currentMember.id, member.id],
                         });
+                        setViewMode("room");
                       }
                     }}
                     className="flex flex-col items-center shrink-0 group focus:outline-hidden"

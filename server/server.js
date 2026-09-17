@@ -1318,7 +1318,7 @@ app.get("/api/rooms", async (req, res) => {
     const { userId } = req.query;
     let query = {};
     if (userId) {
-      query = { $or: [{ type: "all" }, { memberIds: userId }, { createdById: userId }] };
+      query = { $or: [{ type: "all" }, { memberIds: userId }, { createdById: userId }, { adminIds: userId }] };
     }
     const rooms = await Room.find(query).sort({ updatedAt: -1 });
     res.json(rooms);
@@ -2125,6 +2125,33 @@ io.on("connection", (socket) => {
       };
 
       io.to(data.roomId || "room-all").emit("receive_message", responsePayload);
+
+      // Gửi in-app notification cho các thành viên trong phòng (trừ người gửi)
+      try {
+        const targetRoomId = data.roomId;
+        let recipientIds = [];
+        if (targetRoomId && targetRoomId !== "room-all" && mongoose.Types.ObjectId.isValid(targetRoomId)) {
+          const targetRoom = await Room.findById(targetRoomId);
+          if (targetRoom && targetRoom.memberIds && targetRoom.memberIds.length > 0) {
+            recipientIds = targetRoom.memberIds.filter(id => id.toString() !== data.senderId?.toString());
+          }
+        }
+        if (recipientIds.length > 0) {
+          await createAndSendAppNotification({
+            recipientUserIds: recipientIds,
+            senderId: data.senderId,
+            senderName: data.senderName || "Người thân",
+            senderAvatar: data.senderAvatar || "",
+            title: `Tin nhắn mới từ ${data.senderName || "Người thân"}`,
+            content: data.text ? (data.text.length > 60 ? data.text.substring(0, 60) + "..." : data.text) : (data.mediaUrl ? "[Hình ảnh/Tệp tin]" : "Đã gửi một tin nhắn"),
+            type: "chat",
+            targetTab: "chat",
+            targetId: targetRoomId,
+          });
+        }
+      } catch (notifErr) {
+        console.error("Chat notification error:", notifErr);
+      }
 
       if (data.isPriorityPing) {
         await sendPushNotificationToAll(

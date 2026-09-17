@@ -12,6 +12,8 @@ import {
   ShieldCheck,
   Clock,
   Sparkles,
+  Calendar,
+  Image,
 } from 'lucide-react';
 
 export type SubScreen =
@@ -25,7 +27,9 @@ export type SubScreen =
   | 'settings'
   | 'notifications'
   | 'profile'
-  | 'accounts';
+  | 'accounts'
+  | 'calendar'
+  | 'memories';
 
 interface MoreHubScreenProps {
   onNavigateSubScreen: (screen: SubScreen) => void;
@@ -60,11 +64,18 @@ export const MoreHubScreen: React.FC<MoreHubScreenProps> = ({
       color: 'bg-indigo-600 text-white',
     },
     {
-      id: 'map' as SubScreen,
-      title: 'Bản đồ Gia Đình & Địa điểm',
-      desc: 'Vị trí trực tiếp từng thành viên, lưu địa điểm yêu thích & chỉ đường Google Maps',
-      icon: MapPin,
-      color: 'bg-teal-600 text-white',
+      id: 'calendar' as SubScreen,
+      title: 'Lịch & Sự kiện gia đình',
+      desc: 'Xem lịch chi tiết, sinh nhật, giỗ chạp & sự kiện sắp tới',
+      icon: Calendar,
+      color: 'bg-orange-600 text-white',
+    },
+    {
+      id: 'memories' as SubScreen,
+      title: 'Kỷ niệm & Album gia đình',
+      desc: 'Bộ sưu tập album ảnh, khoảnh khắc & dòng thời gian',
+      icon: Image,
+      color: 'bg-pink-600 text-white',
     },
     {
       id: 'tasks' as SubScreen,

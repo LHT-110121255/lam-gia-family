@@ -391,6 +391,90 @@ export const api = {
     }
   },
 
+  // 13.1 Lấy danh sách phòng chat từ MongoDB
+  async getRooms(userId?: string): Promise<any[]> {
+    try {
+      const query = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+      const response = await authFetch(`/rooms${query}`);
+      return await handleApiResponse(response);
+    } catch {
+      return [];
+    }
+  },
+
+  // 13.2 Tạo phòng chat mới
+  async createRoom(roomData: any): Promise<any> {
+    try {
+      const response = await authFetch('/rooms', {
+        method: 'POST',
+        body: JSON.stringify(roomData),
+      });
+      return await handleApiResponse(response);
+    } catch {
+      return null;
+    }
+  },
+
+  // 13.3 Cập nhật thông tin phòng chat
+  async updateRoom(roomId: string, updates: any): Promise<any> {
+    try {
+      const response = await authFetch(`/rooms/${roomId}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+      return await handleApiResponse(response);
+    } catch {
+      return null;
+    }
+  },
+
+  // 13.4 Thêm thành viên vào phòng chat
+  async addMembersToRoom(roomId: string, memberIds: string[]): Promise<any> {
+    try {
+      const response = await authFetch(`/rooms/${roomId}/members`, {
+        method: 'POST',
+        body: JSON.stringify({ memberIds }),
+      });
+      return await handleApiResponse(response);
+    } catch {
+      return null;
+    }
+  },
+
+  // 13.5 Xóa/Rời thành viên khỏi phòng chat
+  async removeMemberFromRoom(roomId: string, memberId: string): Promise<any> {
+    try {
+      const response = await authFetch(`/rooms/${roomId}/members/${memberId}`, {
+        method: 'DELETE',
+      });
+      return await handleApiResponse(response);
+    } catch {
+      return null;
+    }
+  },
+
+  // 13.6 Xóa phòng chat
+  async deleteRoom(roomId: string): Promise<any> {
+    try {
+      const response = await authFetch(`/rooms/${roomId}`, {
+        method: 'DELETE',
+      });
+      return await handleApiResponse(response);
+    } catch {
+      return null;
+    }
+  },
+
+  // 13.7 Lấy kho tài nguyên media/links của phòng chat
+  async getRoomMedia(roomId: string): Promise<{ media: any[]; links: any[] }> {
+    try {
+      const response = await authFetch(`/rooms/${roomId}/media`);
+      return await handleApiResponse(response);
+    } catch {
+      return { media: [], links: [] };
+    }
+  },
+
 
   async getAdminUsers(): Promise<any[]> {
     try {
@@ -727,5 +811,59 @@ export const api = {
       body: JSON.stringify(data),
     });
     return await handleApiResponse(response);
+  },
+
+  // 33. Notifications API
+  async getNotifications(userId?: string): Promise<any[]> {
+    try {
+      const param = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+      const response = await authFetch(`/notifications${param}`);
+      return await handleApiResponse(response);
+    } catch {
+      return [];
+    }
+  },
+  async createNotification(data: any): Promise<any> {
+    try {
+      const response = await authFetch('/notifications', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      return await handleApiResponse(response);
+    } catch (err) {
+      console.warn('API create notification error:', err);
+      return null;
+    }
+  },
+  async markNotificationRead(id: string): Promise<any> {
+    try {
+      const response = await authFetch(`/notifications/${id}/read`, {
+        method: 'PATCH',
+      });
+      return await handleApiResponse(response);
+    } catch {
+      return null;
+    }
+  },
+  async markAllNotificationsRead(userId?: string): Promise<any> {
+    try {
+      const response = await authFetch('/notifications/read-all', {
+        method: 'PATCH',
+        body: JSON.stringify({ userId }),
+      });
+      return await handleApiResponse(response);
+    } catch {
+      return null;
+    }
+  },
+  async deleteNotification(id: string): Promise<any> {
+    try {
+      const response = await authFetch(`/notifications/${id}`, {
+        method: 'DELETE',
+      });
+      return await handleApiResponse(response);
+    } catch {
+      return null;
+    }
   },
 };

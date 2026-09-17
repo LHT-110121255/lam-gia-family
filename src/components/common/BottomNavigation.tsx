@@ -1,7 +1,7 @@
 import React from 'react';
-import { Home, Image as ImageIcon, Calendar, MoreHorizontal, Plus } from 'lucide-react';
+import { Home, MapPin, MessageCircle, MoreHorizontal, Plus } from 'lucide-react';
 
-export type MainTab = 'home' | 'memories' | 'calendar' | 'more';
+export type MainTab = 'home' | 'map' | 'chat' | 'more';
 
 interface BottomNavigationProps {
   currentTab: MainTab;
@@ -23,9 +23,9 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   // 4 main tabs with (+) quick action button in the center
   const tabs = [
     { id: 'home' as MainTab, label: 'Trang chủ', icon: Home },
-    { id: 'memories' as MainTab, label: 'Kỷ niệm', icon: ImageIcon },
-    { id: 'calendar' as MainTab, label: 'Lịch', icon: Calendar },
-    { id: 'more' as MainTab, label: 'Thêm', icon: MoreHorizontal, badge: chatUnreadCount },
+    { id: 'map' as MainTab, label: 'Bản đồ', icon: MapPin },
+    { id: 'chat' as MainTab, label: 'Trò chuyện', icon: MessageCircle, badge: chatUnreadCount },
+    { id: 'more' as MainTab, label: 'Xem thêm', icon: MoreHorizontal },
   ];
 
   return (

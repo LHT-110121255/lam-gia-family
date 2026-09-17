@@ -23,6 +23,8 @@ import { Album } from "./models/Album.js";
 import { Milestone } from "./models/Milestone.js";
 import { Poll } from "./models/Poll.js";
 import { FamilyInfo } from "./models/FamilyInfo.js";
+import { Room } from "./models/Room.js";
+import { Notification } from "./models/Notification.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -149,8 +151,9 @@ mongoose
     console.log("✅ Connected to MongoDB Atlas (family_hub)");
     try {
       await ensureDefaultAccounts();
+      await ensureDefaultRooms();
     } catch (seedErr) {
-      console.warn("Initial accounts check notice:", seedErr.message);
+      console.warn("Initial accounts/rooms check notice:", seedErr.message);
     }
   })
   .catch((err) => {
@@ -270,7 +273,77 @@ async function sendPushNotificationToAll(title, body, payloadData = {}) {
     });
     await Promise.all(notifications);
   } catch (err) {
-    console.error("Error sending web push:", err);
+    console.warn("sendPushNotificationToAll error:", err.message);
+  }
+}
+
+// Helper: Create In-App Notification in MongoDB, Broadcast via Socket.io & Send Web Push
+async function createAndSendAppNotification({
+  recipientUserIds,
+  senderId,
+  senderName = '',
+  senderAvatar = '',
+  title,
+  content,
+  type = 'system',
+  targetTab = 'home',
+  targetId = '',
+}) {
+  try {
+    let targetUsers = recipientUserIds;
+    if (!targetUsers || targetUsers.length === 0) {
+      const query = { isActive: { $ne: false } };
+      if (senderId && mongoose.Types.ObjectId.isValid(senderId)) {
+        query._id = { $ne: senderId };
+      }
+      const users = await User.find(query).select('_id');
+      targetUsers = users.map((u) => u._id);
+    }
+
+    if (!targetUsers || targetUsers.length === 0) return [];
+
+    const notifDocs = targetUsers.map((uid) => ({
+      userId: uid,
+      senderId: senderId && mongoose.Types.ObjectId.isValid(senderId) ? senderId : null,
+      senderName,
+      senderAvatar,
+      title,
+      content,
+      type,
+      targetTab,
+      targetId,
+      read: false,
+    }));
+
+    const insertedNotifs = await Notification.insertMany(notifDocs);
+
+    insertedNotifs.forEach((notif) => {
+      const payload = {
+        id: notif._id.toString(),
+        _id: notif._id.toString(),
+        userId: notif.userId.toString(),
+        senderId: notif.senderId ? notif.senderId.toString() : '',
+        senderName: notif.senderName || '',
+        senderAvatar: notif.senderAvatar || '',
+        title: notif.title,
+        content: notif.content,
+        type: notif.type,
+        targetTab: notif.targetTab,
+        targetId: notif.targetId,
+        read: notif.read,
+        createdAt: notif.createdAt ? notif.createdAt.toISOString() : new Date().toISOString(),
+      };
+
+      io.to(`user-${notif.userId}`).emit('new_notification', payload);
+      io.to('room-all').emit('new_notification', payload);
+    });
+
+    sendPushNotificationToAll(title, content, { url: `/?tab=${targetTab}` });
+
+    return insertedNotifs;
+  } catch (err) {
+    console.error('Error creating app notification:', err);
+    return [];
   }
 }
 
@@ -323,15 +396,45 @@ async function ensureDefaultAccounts() {
   }
 }
 
+async function ensureDefaultRooms() {
+  try {
+    const count = await Room.countDocuments();
+    if (count === 0) {
+      const allUsers = await User.find({}, "_id username");
+      const userIds = allUsers.map((u) => u._id.toString());
+      await Room.create({
+        name: "Đại Gia Đình Họ Lâm",
+        type: "all",
+        memberIds: userIds,
+        description: "Phòng trò chuyện toàn gia đình sum vầy & yêu thương",
+        lastMessage: "Chào mừng cả gia đình!",
+        lastMessageTime: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
+      });
+      console.log("✅ Seeded default chat room: Đại Gia Đình Họ Lâm");
+    }
+  } catch (err) {
+    console.error("Seed rooms error:", err);
+  }
+}
+
 // --- API ENDPOINTS ---
 
-// 0. Health Check & Root API
+// 0. Health Check & Version API
 app.get(["/api", "/api/health"], (req, res) => {
   res.json({
     status: "ok",
     service: "Family Hub Backend",
     authenticated: !!req.headers["authorization"],
     timestamp: new Date(),
+  });
+});
+
+app.get("/api/version", (req, res) => {
+  res.json({
+    name: "Lâm Gia Family Hub Server",
+    version: process.env.npm_package_version || "1.0.0",
+    environment: process.env.NODE_ENV || "development",
+    serverTime: new Date(),
   });
 });
 
@@ -967,6 +1070,81 @@ app.delete("/api/places/:id", async (req, res) => {
 });
 
 // ==========================================
+// 6.2 NOTIFICATIONS API (THÔNG BÁO GIA ĐÌNH)
+// ==========================================
+app.get("/api/notifications", async (req, res) => {
+  try {
+    const { userId } = req.query;
+    let query = {};
+    if (userId) {
+      if (mongoose.Types.ObjectId.isValid(userId)) {
+        query = { $or: [{ userId }, { userId: null }] };
+      }
+    }
+    const notifications = await Notification.find(query).sort({ createdAt: -1 }).limit(100);
+    res.json(notifications);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/notifications", async (req, res) => {
+  try {
+    const { userId, senderId, senderName, senderAvatar, title, content, type, targetTab, targetId } = req.body;
+    const notifs = await createAndSendAppNotification({
+      recipientUserIds: userId ? [userId] : [],
+      senderId,
+      senderName,
+      senderAvatar,
+      title,
+      content,
+      type,
+      targetTab,
+      targetId,
+    });
+    res.status(201).json(notifs[0] || { success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch("/api/notifications/read-all", async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const query = userId && mongoose.Types.ObjectId.isValid(userId) ? { userId } : {};
+    await Notification.updateMany(query, { read: true });
+    res.json({ success: true, message: "Đã đánh dấu tất cả thông báo là đã đọc" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch("/api/notifications/:id/read", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      const notif = await Notification.findByIdAndUpdate(id, { read: true }, { new: true });
+      return res.json(notif);
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/api/notifications/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      await Notification.findByIdAndDelete(id);
+    }
+    res.json({ success: true, message: "Đã xóa thông báo" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
 // 7. POSTS / FEED API
 // ==========================================
 app.get("/api/posts", async (req, res) => {
@@ -984,11 +1162,17 @@ app.post("/api/posts", async (req, res) => {
     await post.save();
     io.emit("new_post", post);
 
-    // Bắn push notification cho cả nhà khi có bài viết mới
-    await sendPushNotificationToAll(
-      `📸 Kỷ niệm mới từ ${post.authorName || "Người thân"}`,
-      post.content.substring(0, 80),
-    );
+    // Tạo thông báo in-app & push notification cho cả nhà khi có bài viết mới
+    await createAndSendAppNotification({
+      senderId: post.authorId,
+      senderName: post.authorName,
+      senderAvatar: post.authorAvatar,
+      title: "Bài viết gia đình mới 📸",
+      content: `${post.authorName || "Thành viên"} vừa đăng: "${(post.content || "").substring(0, 50)}..."`,
+      type: "family",
+      targetTab: "home",
+      targetId: post._id ? post._id.toString() : "",
+    });
 
     res.status(201).json(post);
   } catch (err) {
@@ -1125,6 +1309,146 @@ app.delete("/api/posts/:id", async (req, res) => {
 });
 
 // ==========================================
+// 7.4 CHAT ROOMS API
+// ==========================================
+
+// Lấy danh sách các phòng chat
+app.get("/api/rooms", async (req, res) => {
+  try {
+    const { userId } = req.query;
+    let query = {};
+    if (userId) {
+      query = { $or: [{ type: "all" }, { memberIds: userId }, { createdById: userId }] };
+    }
+    const rooms = await Room.find(query).sort({ updatedAt: -1 });
+    res.json(rooms);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Tạo phòng chat mới
+app.post("/api/rooms", async (req, res) => {
+  try {
+    const roomData = req.body;
+    const room = new Room({
+      name: roomData.name || "Phòng trò chuyện mới",
+      type: roomData.type || "custom",
+      memberIds: roomData.memberIds || [],
+      createdById: roomData.createdById,
+      avatar: roomData.avatar || "",
+      description: roomData.description || "",
+      lastMessage: "Đã tạo phòng trò chuyện mới",
+      lastMessageTime: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
+    });
+    await room.save();
+    io.emit("new_room", room);
+    res.status(201).json(room);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Cập nhật thông tin phòng (Tên, Ảnh, Mô tả, Ghim)
+app.put("/api/rooms/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const query = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { _id: id };
+    const room = await Room.findOneAndUpdate(query, req.body, { new: true });
+    if (!room) {
+      return res.status(404).json({ error: "Không tìm thấy phòng chat" });
+    }
+    io.emit("update_room", room);
+    res.json(room);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Thêm thành viên vào phòng
+app.post("/api/rooms/:id/members", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { memberIds } = req.body;
+    const room = await Room.findById(id);
+    if (!room) {
+      return res.status(404).json({ error: "Không tìm thấy phòng chat" });
+    }
+    const updatedMembers = Array.from(new Set([...room.memberIds, ...(memberIds || [])]));
+    room.memberIds = updatedMembers;
+    await room.save();
+    io.emit("update_room", room);
+    res.json(room);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Xóa/Rời thành viên khỏi phòng
+app.delete("/api/rooms/:id/members/:memberId", async (req, res) => {
+  try {
+    const { id, memberId } = req.params;
+    const room = await Room.findById(id);
+    if (!room) {
+      return res.status(404).json({ error: "Không tìm thấy phòng chat" });
+    }
+    room.memberIds = room.memberIds.filter((m) => m !== memberId);
+    await room.save();
+    io.emit("update_room", room);
+    res.json(room);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Xóa phòng chat
+app.delete("/api/rooms/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      await Room.findByIdAndDelete(id);
+    }
+    io.emit("delete_room", { roomId: id });
+    res.json({ success: true, message: "Đã xóa phòng chat" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Lấy kho tài nguyên Media (ảnh, video, file, link) của phòng chat
+app.get("/api/rooms/:id/media", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const messages = await Message.find({ roomId: id }).select("mediaUrl mediaUrls text createdAt senderName senderAvatar");
+    const mediaList = [];
+    const linkList = [];
+
+    messages.forEach((msg) => {
+      if (msg.mediaUrl) {
+        mediaList.push({ url: msg.mediaUrl, createdAt: msg.createdAt, senderName: msg.senderName });
+      }
+      if (msg.mediaUrls && msg.mediaUrls.length > 0) {
+        msg.mediaUrls.forEach((url) => {
+          mediaList.push({ url, createdAt: msg.createdAt, senderName: msg.senderName });
+        });
+      }
+      if (msg.text) {
+        const matches = msg.text.match(/(https?:\/\/[^\s]+)/g);
+        if (matches) {
+          matches.forEach((url) => {
+            linkList.push({ url, text: msg.text, createdAt: msg.createdAt, senderName: msg.senderName });
+          });
+        }
+      }
+    });
+
+    res.json({ media: mediaList, links: linkList });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
 // 7.5 CHAT MESSAGES API
 // ==========================================
 
@@ -1213,19 +1537,7 @@ app.delete("/api/events/:id", async (req, res) => {
   }
 });
 
-// ==========================================
-// 9. MESSAGES API
-// ==========================================
-app.get("/api/messages/:roomId", async (req, res) => {
-  try {
-    const messages = await Message.find({ roomId: req.params.roomId }).sort({
-      createdAt: 1,
-    });
-    res.json(messages);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+
 
 // ==========================================
 // 10. CHECKLISTS / TASKS API
@@ -1647,6 +1959,7 @@ io.on("connection", (socket) => {
     if (!data || !data.userId) return;
     socketUserId = data.userId;
     connectedUserSockets.set(data.userId, socket.id);
+    socket.join(`user-${data.userId}`);
 
     try {
       if (mongoose.Types.ObjectId.isValid(data.userId)) {

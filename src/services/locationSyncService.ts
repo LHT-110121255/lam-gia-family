@@ -232,7 +232,67 @@ class LocationSyncService {
     return this.isSyncing;
   }
 
+  private watchId: number | null = null;
+
+  /**
+   * Khởi động theo dõi vị trí GPS liên tục Realtime khi mở màn hình Bản đồ
+   */
+  public startLiveLocationWatch(onLocationChanged?: (lat: number, lng: number, address?: string) => void): void {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return;
+    if (this.watchId !== null) return;
+
+    this.watchId = navigator.geolocation.watchPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const currentMember = familyService.getCurrentMember();
+        if (!currentMember) return;
+
+        let address = currentMember.locationAddress || '';
+        try {
+          address = await geocodingService.reverseGeocode(lat, lng);
+        } catch {
+          address = `Tọa độ: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        }
+
+        const battery = await this.getBatteryLevel();
+        const nowIso = new Date().toISOString();
+
+        familyService.updateMember(currentMember.id, {
+          latitude: lat,
+          longitude: lng,
+          locationAddress: address,
+          batteryLevel: battery !== undefined ? battery : currentMember.batteryLevel,
+          lastLocationUpdated: nowIso,
+          lastSeen: 'Vừa xong',
+          onlineStatus: 'online',
+        });
+
+        socketService.updateLocation(currentMember.id, lat, lng, address);
+        if (onLocationChanged) {
+          onLocationChanged(lat, lng, address);
+        }
+      },
+      (err) => {
+        console.warn('Live location watch note:', err.message);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 3000,
+      }
+    );
+  }
+
+  public stopLiveLocationWatch(): void {
+    if (typeof navigator !== 'undefined' && this.watchId !== null) {
+      navigator.geolocation.clearWatch(this.watchId);
+      this.watchId = null;
+    }
+  }
+
   public destroy(): void {
+    this.stopLiveLocationWatch();
     if (this.syncTimer) {
       window.clearInterval(this.syncTimer);
       this.syncTimer = null;

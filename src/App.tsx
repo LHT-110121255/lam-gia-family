@@ -36,15 +36,23 @@ import { FloatingChatBubble } from './components/chat/FloatingChatBubble';
 import { CalendarEvent, ChatMessage, FinanceTransaction, SharedTaskList, FamilyMember } from './types';
 import { ChevronLeft } from 'lucide-react';
 
-const MAIN_TABS: MainTab[] = ['home', 'memories', 'calendar', 'more'];
+const MAIN_TABS: MainTab[] = ['home', 'map', 'chat', 'more'];
 
 export default function App() {
   // --- SERVICE SUBSCRIPTION & REACTIVE STATE ---
   const [, setRevision] = useState(0);
 
   useEffect(() => {
+    familyService.requestNotificationPermission();
     familyService.syncMembersFromBackend();
     familyService.syncPostsFromBackend();
+    familyService.syncEventsFromBackend();
+    familyService.syncChecklistsFromBackend();
+    familyService.syncPollsFromBackend();
+    familyService.syncFinanceFromBackend();
+    familyService.syncAlbumsFromBackend();
+    familyService.syncMilestonesFromBackend();
+    familyService.syncPlacesFromBackend();
     familyService.initChatSocket();
     locationSyncService.init();
     const unsubscribe = familyService.subscribe(() => {
@@ -333,15 +341,15 @@ export default function App() {
         setIsCreatePostOpen(true);
         break;
       case 'new_event':
-        handleTabChange('calendar');
+        handleTabChange('more');
+        setSubScreen('calendar');
         break;
       case 'new_task':
         handleTabChange('more');
         setSubScreen('tasks');
         break;
       case 'check_in':
-        handleTabChange('more');
-        setSubScreen('map');
+        handleTabChange('map');
         break;
       case 'new_expense':
         handleTabChange('more');
@@ -373,9 +381,11 @@ export default function App() {
     0
   );
 
-  // Check if inside Chat room or Map (Hide bottom navigation for full-screen immersive view)
-  const isInsideChat = mainTab === 'more' && subScreen === 'chat';
-  const isInsideMap = mainTab === 'more' && subScreen === 'map';
+  // Navigation bar & header visibility scoping
+  const isInsideChat = mainTab === 'chat' || (mainTab === 'more' && subScreen === 'chat');
+  const isInsideMap = mainTab === 'map' || (mainTab === 'more' && subScreen === 'map');
+  const hideTopBar = isInsideChat || isInsideMap;
+  const hideBottomNav = isInsideChat;
   const isFullScreenView = isInsideChat || isInsideMap;
 
   // If user is logged out, show the AuthScreen as primary view
@@ -408,8 +418,8 @@ export default function App() {
 
       {/* Main Container - Mobile Centered Frame */}
       <div className="w-full max-w-md mx-auto h-full h-[100dvh] bg-[#FFFBF7] shadow-xl border-x border-stone-200/60 relative flex flex-col overflow-hidden">
-        {/* Top Bar Header (Hidden in chat for maximum message view or kept clean) */}
-        {!isInsideChat && (
+        {/* Top Bar Header (Hidden in chat and map for maximum view) */}
+        {!hideTopBar && (
           <div className="shrink-0 w-full">
             <TopBar
               familyInfo={familyInfo}
@@ -434,8 +444,8 @@ export default function App() {
           </div>
         )}
 
-        {/* SubScreen Breadcrumb Back Bar (when inside a deeper screen in "More", except Chat which has its own native header) */}
-        {mainTab === 'more' && subScreen !== 'hub' && subScreen !== 'chat' && (
+        {/* SubScreen Breadcrumb Back Bar */}
+        {mainTab === 'more' && subScreen !== 'hub' && subScreen !== 'chat' && subScreen !== 'map' && (
           <div className="px-4 py-2 border-b border-stone-100 flex items-center gap-2 bg-[#FFFBF7] shrink-0">
             <button
               onClick={() => setSubScreen('hub')}
@@ -456,6 +466,8 @@ export default function App() {
               {subScreen === 'settings' && 'Cài đặt & Trợ năng'}
               {subScreen === 'notifications' && 'Thông báo gia đình'}
               {subScreen === 'accounts' && 'Quản lý tài khoản & Phê duyệt'}
+              {subScreen === 'calendar' && 'Lịch & Sự kiện gia đình'}
+              {subScreen === 'memories' && 'Kỷ niệm & Album gia đình'}
             </span>
           </div>
         )}
@@ -490,7 +502,7 @@ export default function App() {
                   : 'w-full min-h-full flex flex-col'
               }
             >
-              {/* TAB 1: HOME */}
+              {/* TAB 1: HOME (Trang chủ & Kỷ niệm) */}
               {mainTab === 'home' && (
                 <HomeScreen
                   familyInfo={familyInfo}
@@ -504,8 +516,14 @@ export default function App() {
                     if (tab === 'family') {
                       handleTabChange('more');
                       setSubScreen('family');
+                    } else if (tab === 'memories') {
+                      handleTabChange('more');
+                      setSubScreen('memories');
+                    } else if (tab === 'calendar') {
+                      handleTabChange('more');
+                      setSubScreen('calendar');
                     } else {
-                      handleTabChange(tab);
+                      handleTabChange(tab as MainTab);
                       if (tab === 'more') setSubScreen('hub');
                     }
                   }}
@@ -515,7 +533,8 @@ export default function App() {
                     setSelectedMemberProfileId(mId);
                   }}
                   onOpenEventDetail={(ev) => {
-                    handleTabChange('calendar');
+                    handleTabChange('more');
+                    setSubScreen('calendar');
                     setOpenedDirectEvent(ev);
                   }}
                   onToggleTaskItem={handleToggleTaskItem}
@@ -523,91 +542,44 @@ export default function App() {
                     setEditingPost(null);
                     setIsCreatePostOpen(true);
                   }}
-                />
-              )}
-
-              {/* TAB 2: MEMORIES & FEED (Swapped in place of Family tab) */}
-              {mainTab === 'memories' && (
-                <MemoriesScreen
-                  posts={posts}
-                  milestones={milestones}
-                  albums={albums}
-                  onThisDay={onThisDay}
-                  currentMember={currentMember}
-                  allMembers={members}
-                  onToggleLike={(postId) => familyService.toggleLikePost(postId, currentMember.id)}
-                  onAddComment={(postId, text) => {
-                    familyService.addComment(postId, currentMember.id, text);
-                    addToast('Đã gửi bình luận', 'success');
-                  }}
-                  onEditComment={(postId, commentId, text) => {
-                    familyService.editComment(postId, commentId, text);
-                    addToast('Đã cập nhật bình luận', 'success');
-                  }}
-                  onDeleteComment={(postId, commentId) => {
-                    familyService.deleteComment(postId, commentId);
-                    addToast('Đã xoá bình luận', 'info');
-                  }}
-                  onDeletePost={(postId) => {
-                    familyService.deletePost(postId);
-                    addToast('Đã xoá bài đăng', 'info');
-                  }}
                   onEditPost={(post) => {
                     setEditingPost(post);
                     setIsCreatePostOpen(true);
                   }}
-                  onOpenCreatePost={() => {
-                    setEditingPost(null);
-                    setIsCreatePostOpen(true);
-                  }}
-                  onOpenMemberProfile={(mId) => {
-                    handleTabChange('more');
-                    setSubScreen('family');
-                    setSelectedMemberProfileId(mId);
-                  }}
-                  onCreateAlbum={(album) => {
-                    familyService.createAlbum(album);
-                    addToast('Đã tạo album mới', 'success');
-                  }}
-                  onDeleteAlbum={(albumId) => {
-                    familyService.deleteAlbum(albumId);
-                    addToast('Đã xoá album thành công', 'info');
-                  }}
-                  onAddPhotoToAlbum={(albumId, photo) => {
-                    familyService.addPhotoToAlbum(albumId, photo);
-                    addToast('Đã thêm ảnh vào album', 'success');
-                  }}
-                  onDeletePhotoFromAlbum={(albumId, photoId) => {
-                    familyService.deletePhotoFromAlbum(albumId, photoId);
-                    addToast('Đã xoá ảnh khỏi album', 'info');
-                  }}
-                  onAddMilestone={(milestone) => {
-                    familyService.addMilestone(milestone);
-                    addToast('Đã thêm sự kiện dòng thời gian', 'success');
-                  }}
-                  onDeleteMilestone={(milestoneId) => {
-                    familyService.deleteMilestone(milestoneId);
-                    addToast('Đã xoá mốc sự kiện', 'info');
-                  }}
+                  onDeletePost={(postId) => familyService.deletePost(postId)}
+                  onToggleLike={(postId) => familyService.toggleLikePost(postId, currentMember.id)}
+                  onAddComment={(postId, text) => familyService.addComment(postId, currentMember.id, text)}
                 />
               )}
 
-              {/* TAB 3: CALENDAR */}
-              {mainTab === 'calendar' && (
-                <CalendarScreen
-                  events={events}
+              {/* TAB 2: MAP (Dedicated Full-Screen Location & Safety Tab) */}
+              {mainTab === 'map' && (
+                <FamilyMapScreen
                   allMembers={members}
                   currentMember={currentMember}
-                  onAddEvent={(ev) => {
-                    familyService.addEvent(ev);
-                    addToast('Đã thêm sự kiện vào lịch', 'success');
-                  }}
-                  onDeleteEvent={(evId) => {
-                    familyService.deleteEvent(evId);
-                    addToast('Đã xoá sự kiện', 'info');
-                  }}
-                  onOpenEventDetailDirect={openedDirectEvent}
-                  onCloseEventDetailDirect={() => setOpenedDirectEvent(null)}
+                />
+              )}
+
+              {/* TAB 3: CHAT (Realtime Chat Tab) */}
+              {mainTab === 'chat' && (
+                <ChatScreen
+                  rooms={chatRooms}
+                  messages={familyService.getMessages(activeChatRoomId)}
+                  currentMember={currentMember}
+                  allMembers={members}
+                  activeRoomId={activeChatRoomId}
+                  onSelectRoom={(rId) => setActiveChatRoomId(rId)}
+                  onSendMessage={handleSendMessage}
+                  onToggleReaction={handleToggleChatReaction}
+                  onDeleteMessage={handleDeleteMessage}
+                  onPinMessage={handlePinMessage}
+                  onUnpinMessage={handleUnpinMessage}
+                  onCreateRoom={handleCreateChatRoom}
+                  onUpdateRoom={handleUpdateChatRoom}
+                  onDeleteRoom={handleDeleteChatRoom}
+                  onAddMembersToRoom={handleAddMembersToRoom}
+                  onRemoveMemberFromRoom={handleRemoveMemberFromRoom}
+                  onBackToRooms={() => handleTabChange('home')}
                 />
               )}
 
@@ -641,11 +613,94 @@ export default function App() {
                       selectedMemberId={selectedMemberProfileId}
                       onSelectMember={(mId) => setSelectedMemberProfileId(mId)}
                       onStartChatWith={(mId) => {
-                        setSubScreen('chat');
+                        handleTabChange('chat');
                       }}
                       onUpdateFamilyInfo={(updatedInfo) => {
                         familyService.updateFamilyInfo(updatedInfo);
                         addToast('Đã cập nhật thông tin gia đình thành công!', 'success');
+                      }}
+                    />
+                  )}
+
+                  {subScreen === 'calendar' && (
+                    <CalendarScreen
+                      events={events}
+                      allMembers={members}
+                      currentMember={currentMember}
+                      onAddEvent={(ev) => {
+                        familyService.addEvent(ev);
+                        addToast('Đã thêm sự kiện vào lịch', 'success');
+                      }}
+                      onDeleteEvent={(evId) => {
+                        familyService.deleteEvent(evId);
+                        addToast('Đã xoá sự kiện', 'info');
+                      }}
+                      onOpenEventDetailDirect={openedDirectEvent}
+                      onCloseEventDetailDirect={() => setOpenedDirectEvent(null)}
+                    />
+                  )}
+
+                  {subScreen === 'memories' && (
+                    <MemoriesScreen
+                      posts={posts}
+                      milestones={milestones}
+                      albums={albums}
+                      onThisDay={onThisDay}
+                      currentMember={currentMember}
+                      allMembers={members}
+                      onToggleLike={(postId) => familyService.toggleLikePost(postId, currentMember.id)}
+                      onAddComment={(postId, text) => {
+                        familyService.addComment(postId, currentMember.id, text);
+                        addToast('Đã gửi bình luận', 'success');
+                      }}
+                      onEditComment={(postId, commentId, text) => {
+                        familyService.editComment(postId, commentId, text);
+                        addToast('Đã cập nhật bình luận', 'success');
+                      }}
+                      onDeleteComment={(postId, commentId) => {
+                        familyService.deleteComment(postId, commentId);
+                        addToast('Đã xoá bình luận', 'info');
+                      }}
+                      onDeletePost={(postId) => {
+                        familyService.deletePost(postId);
+                        addToast('Đã xoá bài đăng', 'info');
+                      }}
+                      onEditPost={(post) => {
+                        setEditingPost(post);
+                        setIsCreatePostOpen(true);
+                      }}
+                      onOpenCreatePost={() => {
+                        setEditingPost(null);
+                        setIsCreatePostOpen(true);
+                      }}
+                      onOpenMemberProfile={(mId) => {
+                        handleTabChange('more');
+                        setSubScreen('family');
+                        setSelectedMemberProfileId(mId);
+                      }}
+                      onCreateAlbum={(album) => {
+                        familyService.createAlbum(album);
+                        addToast('Đã tạo album mới', 'success');
+                      }}
+                      onDeleteAlbum={(albumId) => {
+                        familyService.deleteAlbum(albumId);
+                        addToast('Đã xoá album thành công', 'info');
+                      }}
+                      onAddPhotoToAlbum={(albumId, photo) => {
+                        familyService.addPhotoToAlbum(albumId, photo);
+                        addToast('Đã thêm ảnh vào album', 'success');
+                      }}
+                      onDeletePhotoFromAlbum={(albumId, photoId) => {
+                        familyService.deletePhotoFromAlbum(albumId, photoId);
+                        addToast('Đã xoá ảnh khỏi album', 'info');
+                      }}
+                      onAddMilestone={(milestone) => {
+                        familyService.addMilestone(milestone);
+                        addToast('Đã thêm sự kiện dòng thời gian', 'success');
+                      }}
+                      onDeleteMilestone={(milestoneId) => {
+                        familyService.deleteMilestone(milestoneId);
+                        addToast('Đã xoá mốc sự kiện', 'info');
                       }}
                     />
                   )}
@@ -759,11 +814,20 @@ export default function App() {
                       onMarkAsRead={(id) => familyService.markNotificationAsRead(id)}
                       onMarkAllAsRead={() => familyService.markAllNotificationsAsRead()}
                       onNavigateTo={(type) => {
-                        if (type === 'event') handleTabChange('calendar');
-                        else if (type === 'message') setSubScreen('chat');
-                        else if (type === 'task') setSubScreen('tasks');
-                        else if (type === 'safety' || type === 'map') setSubScreen('map');
-                        else if (type === 'family') handleTabChange('memories');
+                        if (type === 'event') {
+                          handleTabChange('more');
+                          setSubScreen('calendar');
+                        } else if (type === 'message') {
+                          handleTabChange('chat');
+                        } else if (type === 'task') {
+                          handleTabChange('more');
+                          setSubScreen('tasks');
+                        } else if (type === 'safety' || type === 'map') {
+                          handleTabChange('map');
+                        } else if (type === 'family') {
+                          handleTabChange('more');
+                          setSubScreen('memories');
+                        }
                       }}
                     />
                   )}
@@ -796,13 +860,13 @@ export default function App() {
           }
         />
 
-        {/* Global Bottom Navigation (HIDDEN when in Chat room or Map) */}
+        {/* Global Bottom Navigation (HIDDEN only when inside Chat room) */}
         <BottomNavigation
           currentTab={mainTab}
           onTabChange={handleTabChange}
           onOpenQuickAction={() => setIsQuickActionOpen(true)}
           chatUnreadCount={totalChatUnread}
-          hidden={isFullScreenView}
+          hidden={hideBottomNav}
         />
 
         {/* Quick Action Floating Bottom Sheet */}

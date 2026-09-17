@@ -7,6 +7,7 @@ import {
   FamilyMember,
 } from "../../types";
 import { Avatar } from "../common/Avatar";
+import { ImageWithFallback } from "../common/ImageWithFallback";
 import {
   Heart,
   MessageCircle,
@@ -430,14 +431,12 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
                         }`}
                       >
                         {post.mediaUrls.map((url, i) => (
-                          <img
+                          <ImageWithFallback
                             key={i}
                             src={url}
                             alt="Ảnh gia đình"
                             onClick={() => setLightboxPhoto(url)}
-                            className="w-full h-44 object-cover rounded-2xl cursor-pointer hover:opacity-95 transition"
-                            loading="lazy"
-                            referrerPolicy="no-referrer"
+                            className="w-full h-44 object-cover rounded-2xl cursor-pointer"
                           />
                         ))}
                       </div>

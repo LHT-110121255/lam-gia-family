@@ -1,13 +1,14 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
-import L from 'leaflet';
-import { FamilyMember, FamilyPlace } from '../../types';
-import { familyService } from '../../services/familyService';
-import { socketService } from '../../services/socket';
-import { locationSyncService } from '../../services/locationSyncService';
-import { LocationInput } from '../common/LocationInput';
-import { LocationPickerModal } from '../common/LocationPickerModal';
-import { BottomSheet } from '../common/BottomSheet';
-import { Avatar } from '../common/Avatar';
+import React, { useEffect, useRef, useState, useMemo } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { FamilyMember, FamilyPlace } from "../../types";
+import { familyService } from "../../services/familyService";
+import { socketService } from "../../services/socket";
+import { locationSyncService } from "../../services/locationSyncService";
+import { LocationInput } from "../common/LocationInput";
+import { LocationPickerModal } from "../common/LocationPickerModal";
+import { BottomSheet } from "../common/BottomSheet";
+import { Avatar } from "../common/Avatar";
 import {
   MapPin,
   Search,
@@ -25,7 +26,7 @@ import {
   Trash2,
   Edit2,
   Check,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface FamilyMapScreenProps {
   allMembers: FamilyMember[];
@@ -42,53 +43,71 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
   const placeMarkersRef = useRef<Record<string, L.Marker>>({});
 
   // Places & Categories State from FamilyService
-  const [places, setPlaces] = useState<FamilyPlace[]>(() => familyService.getPlaces());
+  const [places, setPlaces] = useState<FamilyPlace[]>(() =>
+    familyService.getPlaces(),
+  );
   const [placeCategories, setPlaceCategories] = useState<string[]>(() =>
-    familyService.getCustomPlaceCategories()
+    familyService.getCustomPlaceCategories(),
   );
 
   // Filters & Search State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
-  const [selectedCreatorFilter, setSelectedCreatorFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategoryFilter, setSelectedCategoryFilter] =
+    useState<string>("all");
+  const [selectedCreatorFilter, setSelectedCreatorFilter] =
+    useState<string>("all");
 
   // Selected Item to show Detail BottomSheet
-  const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
+  const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(
+    null,
+  );
   const [selectedPlace, setSelectedPlace] = useState<FamilyPlace | null>(null);
 
   // Modal State for Adding New Place
   const [showAddPlaceModal, setShowAddPlaceModal] = useState(false);
-  const [newPlaceName, setNewPlaceName] = useState('');
-  const [newPlaceAddress, setNewPlaceAddress] = useState('');
-  const [newPlaceCoords, setNewPlaceCoords] = useState<{ lat: number; lng: number }>({
+  const [newPlaceName, setNewPlaceName] = useState("");
+  const [newPlaceAddress, setNewPlaceAddress] = useState("");
+  const [newPlaceCoords, setNewPlaceCoords] = useState<{
+    lat: number;
+    lng: number;
+  }>({
     lat: 9.8189,
     lng: 106.2081,
   });
   const [newPlaceCategory, setNewPlaceCategory] = useState<string>(
-    placeCategories[0] || 'Nhà riêng'
+    placeCategories[0] || "Nhà riêng",
   );
-  const [newPlaceImage, setNewPlaceImage] = useState('');
-  const [newPlaceNotes, setNewPlaceNotes] = useState('');
-  const [isAddingNewPlaceCategory, setIsAddingNewPlaceCategory] = useState(false);
-  const [customCategoryInput, setCustomCategoryInput] = useState('');
+  const [newPlaceImage, setNewPlaceImage] = useState("");
+  const [newPlaceNotes, setNewPlaceNotes] = useState("");
+  const [isAddingNewPlaceCategory, setIsAddingNewPlaceCategory] =
+    useState(false);
+  const [customCategoryInput, setCustomCategoryInput] = useState("");
 
   // Modal State for Editing Place
   const [editingPlace, setEditingPlace] = useState<FamilyPlace | null>(null);
-  const [editPlaceName, setEditPlaceName] = useState('');
-  const [editPlaceAddress, setEditPlaceAddress] = useState('');
-  const [editPlaceCoords, setEditPlaceCoords] = useState<{ lat: number; lng: number }>({
+  const [editPlaceName, setEditPlaceName] = useState("");
+  const [editPlaceAddress, setEditPlaceAddress] = useState("");
+  const [editPlaceCoords, setEditPlaceCoords] = useState<{
+    lat: number;
+    lng: number;
+  }>({
     lat: 9.8189,
     lng: 106.2081,
   });
-  const [editPlaceCategory, setEditPlaceCategory] = useState<string>('Nhà riêng');
-  const [editPlaceImage, setEditPlaceImage] = useState('');
-  const [editPlaceNotes, setEditPlaceNotes] = useState('');
-  const [isAddingEditPlaceCategory, setIsAddingEditPlaceCategory] = useState(false);
-  const [editCustomCategoryInput, setEditCustomCategoryInput] = useState('');
+  const [editPlaceCategory, setEditPlaceCategory] =
+    useState<string>("Nhà riêng");
+  const [editPlaceImage, setEditPlaceImage] = useState("");
+  const [editPlaceNotes, setEditPlaceNotes] = useState("");
+  const [isAddingEditPlaceCategory, setIsAddingEditPlaceCategory] =
+    useState(false);
+  const [editCustomCategoryInput, setEditCustomCategoryInput] = useState("");
 
   // GPS Sync State
   const [isSyncingLocation, setIsSyncingLocation] = useState(false);
-  const [syncToast, setSyncToast] = useState<{ text: string; isError?: boolean } | null>(null);
+  const [syncToast, setSyncToast] = useState<{
+    text: string;
+    isError?: boolean;
+  } | null>(null);
   const [showAdjustLocationModal, setShowAdjustLocationModal] = useState(false);
 
   // 1. Initialize Map & Subscribe to data updates
@@ -113,16 +132,20 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
         zoomControl: false,
       });
 
-      // Lớp bản đồ MapTiler Streets v2 HD
+      // Lớp bản đồ MapTiler Streets v2 HD mượt mà
       const mapTilerUrl =
-        'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=odL8F5mMYH7APbT24t4Q';
+        "https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=odL8F5mMYH7APbT24t4Q";
 
       L.tileLayer(mapTilerUrl, {
+        tileSize: 512,
+        zoomOffset: -1,
+        minZoom: 1,
         maxZoom: 20,
-        attribution: '© MapTiler © OpenStreetMap',
+        crossOrigin: true,
+        attribution: "© MapTiler © OpenStreetMap contributors",
       }).addTo(map);
 
-      L.control.zoom({ position: 'bottomright' }).addTo(map);
+      L.control.zoom({ position: "bottomright" }).addTo(map);
 
       mapInstanceRef.current = map;
 
@@ -130,7 +153,7 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
         if (mapInstanceRef.current) {
           mapInstanceRef.current.invalidateSize();
         }
-      }, 100);
+      }, 200);
     }
 
     // Tự động định vị GPS chính xác khi mở màn hình Bản đồ
@@ -140,7 +163,11 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
       }
     });
 
+    // Kích hoạt theo dõi GPS thực tế liên tục Realtime (Hardware watchPosition)
+    locationSyncService.startLiveLocationWatch();
+
     return () => {
+      locationSyncService.stopLiveLocationWatch();
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -159,12 +186,12 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
     if (result.success && result.lat && result.lng) {
       flyToLocation(result.lat, result.lng, 16);
       setSyncToast({
-        text: `Đã xác định vị trí: ${result.address || 'Thành công'}`,
+        text: `Đã xác định vị trí: ${result.address || "Thành công"}`,
         isError: false,
       });
     } else {
       setSyncToast({
-        text: `Lỗi định vị: ${result.error || 'Vui lòng kiểm tra quyền GPS'}`,
+        text: `Lỗi định vị: ${result.error || "Vui lòng kiểm tra quyền GPS"}`,
         isError: true,
       });
     }
@@ -172,7 +199,10 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
   };
 
   // Manual Adjust & Save Current Location
-  const handleManualUpdateMyLocation = (address: string, coords?: { lat: number; lng: number }) => {
+  const handleManualUpdateMyLocation = (
+    address: string,
+    coords?: { lat: number; lng: number },
+  ) => {
     if (!coords) return;
     const nowIso = new Date().toISOString();
     familyService.updateMember(currentMember.id, {
@@ -180,10 +210,15 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
       longitude: coords.lng,
       locationAddress: address,
       lastLocationUpdated: nowIso,
-      lastSeen: 'Vừa xong',
-      onlineStatus: 'online',
+      lastSeen: "Vừa xong",
+      onlineStatus: "online",
     });
-    socketService.updateLocation(currentMember.id, coords.lat, coords.lng, address);
+    socketService.updateLocation(
+      currentMember.id,
+      coords.lat,
+      coords.lng,
+      address,
+    );
     flyToLocation(coords.lat, coords.lng, 16);
     setSyncToast({
       text: `Đã cập nhật vị trí của bạn: ${address}`,
@@ -196,7 +231,7 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
   // Open external Google Maps navigation
   const handleOpenGoogleMapsRoute = (lat: number, lng: number) => {
     const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-    window.open(url, '_blank');
+    window.open(url, "_blank");
   };
 
   // Zoom to specific coordinates
@@ -216,15 +251,17 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
         !searchQuery.trim() ||
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.createdByName && p.createdByName.toLowerCase().includes(searchQuery.toLowerCase()));
+        (p.createdByName &&
+          p.createdByName.toLowerCase().includes(searchQuery.toLowerCase()));
 
       const matchCategory =
-        selectedCategoryFilter === 'all' ||
-        (selectedCategoryFilter === 'places_only' && true) ||
+        selectedCategoryFilter === "all" ||
+        (selectedCategoryFilter === "places_only" && true) ||
         p.category === selectedCategoryFilter;
 
       const matchCreator =
-        selectedCreatorFilter === 'all' || p.createdById === selectedCreatorFilter;
+        selectedCreatorFilter === "all" ||
+        p.createdById === selectedCreatorFilter;
 
       return matchSearch && matchCategory && matchCreator;
     });
@@ -232,7 +269,10 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
 
   // Filtered Members list
   const filteredMembers = useMemo(() => {
-    if (selectedCategoryFilter !== 'all' && selectedCategoryFilter !== 'members_only') {
+    if (
+      selectedCategoryFilter !== "all" &&
+      selectedCategoryFilter !== "members_only"
+    ) {
       return [];
     }
     return allMembers.filter((m) => {
@@ -240,7 +280,8 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
         !searchQuery.trim() ||
         m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         m.relationship.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (m.locationAddress && m.locationAddress.toLowerCase().includes(searchQuery.toLowerCase()))
+        (m.locationAddress &&
+          m.locationAddress.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     });
   }, [allMembers, searchQuery, selectedCategoryFilter]);
@@ -251,29 +292,37 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
     if (!map) return;
 
     // Clear existing markers
-    Object.values(memberMarkersRef.current).forEach((marker) => map.removeLayer(marker));
-    Object.values(placeMarkersRef.current).forEach((marker) => map.removeLayer(marker));
+    Object.values(memberMarkersRef.current).forEach((marker) =>
+      map.removeLayer(marker),
+    );
+    Object.values(placeMarkersRef.current).forEach((marker) =>
+      map.removeLayer(marker),
+    );
     memberMarkersRef.current = {};
     placeMarkersRef.current = {};
 
     // A. Render Member Markers
     filteredMembers.forEach((member) => {
-      const lat = member.latitude || (member.id === currentMember.id ? undefined : 9.8189);
-      const lng = member.longitude || (member.id === currentMember.id ? undefined : 106.2081);
+      const lat =
+        member.latitude ||
+        (member.id === currentMember.id ? undefined : 9.8189);
+      const lng =
+        member.longitude ||
+        (member.id === currentMember.id ? undefined : 106.2081);
       if (!lat || !lng) return;
 
       const customMemberIcon = L.divIcon({
-        className: 'custom-member-marker',
+        className: "custom-member-marker",
         html: `
           <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer;">
             <div style="position: relative; width: 44px; height: 44px; border-radius: 50%; border: 3px solid #ea580c; overflow: hidden; background: white; box-shadow: 0 4px 14px rgba(234, 88, 12, 0.45);">
               <img src="${member.avatar}" style="width: 100%; height: 100%; object-fit: cover;" />
               <span style="position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; border-radius: 50%; background: ${
-                member.onlineStatus === 'online' ? '#22c55e' : '#94a3b8'
+                member.onlineStatus === "online" ? "#22c55e" : "#94a3b8"
               }; border: 2px solid white;"></span>
             </div>
             <div style="background: rgba(28, 25, 23, 0.9); color: white; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 9999px; margin-top: 3px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
-              ${member.name.split(' ').slice(-1)[0]}
+              ${member.name.split(" ").slice(-1)[0]}
             </div>
           </div>
         `,
@@ -281,8 +330,10 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
         iconAnchor: [22, 55],
       });
 
-      const marker = L.marker([lat, lng], { icon: customMemberIcon }).addTo(map);
-      marker.on('click', () => {
+      const marker = L.marker([lat, lng], { icon: customMemberIcon }).addTo(
+        map,
+      );
+      marker.on("click", () => {
         setSelectedPlace(null);
         setSelectedMember(member);
         flyToLocation(lat, lng, 16);
@@ -294,7 +345,7 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
     // B. Render Saved Places Markers
     filteredPlaces.forEach((place) => {
       const customPlaceIcon = L.divIcon({
-        className: 'custom-place-marker',
+        className: "custom-place-marker",
         html: `
           <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer;">
             <div style="width: 38px; height: 38px; border-radius: 14px; background: #0284c7; color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.45); border: 2.5px solid white;">
@@ -309,8 +360,10 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
         iconAnchor: [19, 50],
       });
 
-      const marker = L.marker([place.latitude, place.longitude], { icon: customPlaceIcon }).addTo(map);
-      marker.on('click', () => {
+      const marker = L.marker([place.latitude, place.longitude], {
+        icon: customPlaceIcon,
+      }).addTo(map);
+      marker.on("click", () => {
         setSelectedMember(null);
         setSelectedPlace(place);
         flyToLocation(place.latitude, place.longitude, 16);
@@ -346,18 +399,18 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
     });
 
     setPlaces(familyService.getPlaces());
-    setSelectedCategoryFilter('all');
-    setSelectedCreatorFilter('all');
-    setSearchQuery('');
+    setSelectedCategoryFilter("all");
+    setSelectedCreatorFilter("all");
+    setSearchQuery("");
     setShowAddPlaceModal(false);
 
     // Reset Form
-    setNewPlaceName('');
-    setNewPlaceAddress('');
-    setNewPlaceImage('');
-    setNewPlaceNotes('');
+    setNewPlaceName("");
+    setNewPlaceAddress("");
+    setNewPlaceImage("");
+    setNewPlaceNotes("");
     setIsAddingNewPlaceCategory(false);
-    setCustomCategoryInput('');
+    setCustomCategoryInput("");
 
     // Focus on new place
     setSelectedMember(null);
@@ -384,10 +437,10 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
     setEditPlaceAddress(place.address);
     setEditPlaceCoords({ lat: place.latitude, lng: place.longitude });
     setEditPlaceCategory(place.category);
-    setEditPlaceImage(place.imageUrl || '');
-    setEditPlaceNotes(place.notes || '');
+    setEditPlaceImage(place.imageUrl || "");
+    setEditPlaceNotes(place.notes || "");
     setIsAddingEditPlaceCategory(false);
-    setEditCustomCategoryInput('');
+    setEditCustomCategoryInput("");
   };
 
   // Handle Edit Image Upload
@@ -405,7 +458,8 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
   // Handle Update Place Submit
   const handleUpdatePlaceSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingPlace || !editPlaceName.trim() || !editPlaceAddress.trim()) return;
+    if (!editingPlace || !editPlaceName.trim() || !editPlaceAddress.trim())
+      return;
 
     let finalCategory = editPlaceCategory;
     if (isAddingEditPlaceCategory && editCustomCategoryInput.trim()) {
@@ -439,7 +493,7 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
 
   // Handle Delete Place
   const handleDeletePlace = (placeId: string) => {
-    if (window.confirm('Bạn có chắc muốn xoá địa điểm này khỏi bản đồ?')) {
+    if (window.confirm("Bạn có chắc muốn xoá địa điểm này khỏi bản đồ?")) {
       familyService.deletePlace(placeId);
       setPlaces(familyService.getPlaces());
       setSelectedPlace(null);
@@ -463,7 +517,7 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
             />
             {searchQuery && (
               <button
-                onClick={() => setSearchQuery('')}
+                onClick={() => setSearchQuery("")}
                 className="p-1 text-stone-400 hover:text-stone-600"
               >
                 <X className="w-3.5 h-3.5" />
@@ -484,22 +538,22 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
         {/* Filter Categories Horizontal Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
           <button
-            onClick={() => setSelectedCategoryFilter('all')}
+            onClick={() => setSelectedCategoryFilter("all")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition shadow-xs ${
-              selectedCategoryFilter === 'all'
-                ? 'bg-stone-900 text-white shadow-md'
-                : 'bg-white/90 text-stone-700 hover:bg-white border border-stone-200/80'
+              selectedCategoryFilter === "all"
+                ? "bg-stone-900 text-white shadow-md"
+                : "bg-white/90 text-stone-700 hover:bg-white border border-stone-200/80"
             }`}
           >
             Tất cả
           </button>
 
           <button
-            onClick={() => setSelectedCategoryFilter('members_only')}
+            onClick={() => setSelectedCategoryFilter("members_only")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition flex items-center gap-1 shadow-xs ${
-              selectedCategoryFilter === 'members_only'
-                ? 'bg-orange-600 text-white shadow-md'
-                : 'bg-white/90 text-stone-700 hover:bg-white border border-stone-200/80'
+              selectedCategoryFilter === "members_only"
+                ? "bg-orange-600 text-white shadow-md"
+                : "bg-white/90 text-stone-700 hover:bg-white border border-stone-200/80"
             }`}
           >
             <Users className="w-3.5 h-3.5" />
@@ -512,8 +566,8 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
               onClick={() => setSelectedCategoryFilter(cat)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition shadow-xs ${
                 selectedCategoryFilter === cat
-                  ? 'bg-sky-600 text-white shadow-md'
-                  : 'bg-white/90 text-stone-700 hover:bg-white border border-stone-200/80'
+                  ? "bg-sky-600 text-white shadow-md"
+                  : "bg-white/90 text-stone-700 hover:bg-white border border-stone-200/80"
               }`}
             >
               {cat}
@@ -560,8 +614,8 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
             <div
               className={`p-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 shadow-lg backdrop-blur-md ${
                 syncToast.isError
-                  ? 'bg-red-500/90 text-white'
-                  : 'bg-stone-900/90 text-white'
+                  ? "bg-red-500/90 text-white"
+                  : "bg-stone-900/90 text-white"
               }`}
             >
               <Navigation className="w-3.5 h-3.5 shrink-0 text-orange-400" />
@@ -570,14 +624,16 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
           </div>
         )}
 
-        {/* Realtime Family Tracking Floating Bar (Story Carousel at bottom of map) */}
+        {/* Realtime Family Tracking Floating Bar (Floating above Bottom Navigation) */}
         <div className="absolute bottom-4 left-3 right-3 z-20 bg-white/95 backdrop-blur-md rounded-3xl p-3 shadow-xl border border-stone-200/80 space-y-2">
           <div className="flex items-center justify-between px-1">
             <span className="text-[11px] font-bold text-stone-800 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               Vị trí trực tiếp gia đình ({allMembers.length} thành viên)
             </span>
-            <span className="text-[10px] text-stone-400">Chạm để xem & chỉ đường</span>
+            <span className="text-[10px] text-stone-400">
+              Chạm để xem & chỉ đường
+            </span>
           </div>
 
           <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
@@ -593,28 +649,28 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
                     flyToLocation(
                       member.latitude || 9.8189,
                       member.longitude || 106.2081,
-                      16
+                      16,
                     );
                   }}
                   className={`flex items-center gap-2 p-2 rounded-2xl border shrink-0 transition text-left active:scale-95 ${
                     isSelected
-                      ? 'bg-orange-50 border-orange-500 ring-2 ring-orange-500/20 shadow-xs'
-                      : 'bg-stone-50 hover:bg-stone-100 border-stone-200'
+                      ? "bg-orange-50 border-orange-500 ring-2 ring-orange-500/20 shadow-xs"
+                      : "bg-stone-50 hover:bg-stone-100 border-stone-200"
                   }`}
                 >
                   <Avatar src={member.avatar} name={member.name} size="sm" />
                   <div className="min-w-0 pr-1">
                     <div className="flex items-center gap-1">
                       <h4 className="text-xs font-bold text-stone-900 truncate">
-                        {member.name.split(' ').slice(-1)[0]}
+                        {member.name.split(" ").slice(-1)[0]}
                       </h4>
                       <span
                         className={`text-[9px] font-bold px-1 rounded-md ${
                           battery > 50
-                            ? 'bg-emerald-100 text-emerald-800'
+                            ? "bg-emerald-100 text-emerald-800"
                             : battery > 20
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-red-100 text-red-800 animate-pulse'
+                              ? "bg-amber-100 text-amber-800"
+                              : "bg-red-100 text-red-800 animate-pulse"
                         }`}
                       >
                         {battery}%
@@ -622,7 +678,7 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
                     </div>
                     <p className="text-[10px] text-stone-500 truncate max-w-[100px]">
                       {locationSyncService.formatLastUpdated(
-                        member.lastLocationUpdated || member.lastSeen
+                        member.lastLocationUpdated || member.lastSeen,
                       )}
                     </p>
                   </div>
@@ -643,13 +699,21 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
           <div className="space-y-4 text-xs">
             {/* Header info */}
             <div className="flex items-center gap-3.5 pb-3 border-b border-stone-100">
-              <Avatar src={selectedMember.avatar} name={selectedMember.name} size="lg" />
+              <Avatar
+                src={selectedMember.avatar}
+                name={selectedMember.name}
+                size="lg"
+              />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold text-stone-900">{selectedMember.name}</h3>
+                  <h3 className="text-base font-bold text-stone-900">
+                    {selectedMember.name}
+                  </h3>
                   <span
                     className={`w-2.5 h-2.5 rounded-full ${
-                      selectedMember.onlineStatus === 'online' ? 'bg-emerald-500' : 'bg-stone-400'
+                      selectedMember.onlineStatus === "online"
+                        ? "bg-emerald-500"
+                        : "bg-stone-400"
                     }`}
                   />
                 </div>
@@ -660,10 +724,10 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
                   <span
                     className={`flex items-center gap-1 font-bold ${
                       (selectedMember.batteryLevel ?? 95) > 50
-                        ? 'text-emerald-600'
+                        ? "text-emerald-600"
                         : (selectedMember.batteryLevel ?? 95) > 20
-                        ? 'text-amber-600'
-                        : 'text-red-600 animate-pulse'
+                          ? "text-amber-600"
+                          : "text-red-600 animate-pulse"
                     }`}
                   >
                     <Battery className="w-3.5 h-3.5" />
@@ -672,7 +736,8 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
                   <span className="flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5 text-stone-400" />
                     {locationSyncService.formatLastUpdated(
-                      selectedMember.lastLocationUpdated || selectedMember.lastSeen
+                      selectedMember.lastLocationUpdated ||
+                        selectedMember.lastSeen,
                     )}
                   </span>
                 </div>
@@ -685,10 +750,11 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
                 Vị trí hiện tại:
               </span>
               <p className="text-xs font-bold text-stone-900 leading-relaxed">
-                {selectedMember.locationAddress || 'Thị trấn Tiểu Cần, Tỉnh Trà Vinh'}
+                {selectedMember.locationAddress ||
+                  "Thị trấn Tiểu Cần, Tỉnh Trà Vinh"}
               </p>
               <span className="text-[10px] text-stone-400 font-mono block mt-0.5">
-                Khu vực: {selectedMember.currentZone || 'Nhà chính'}
+                Khu vực: {selectedMember.currentZone || "Nhà chính"}
               </span>
             </div>
 
@@ -700,7 +766,7 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
                   onClick={() =>
                     handleOpenGoogleMapsRoute(
                       selectedMember.latitude || 9.8189,
-                      selectedMember.longitude || 106.2081
+                      selectedMember.longitude || 106.2081,
                     )
                   }
                   className="flex-1 py-3 bg-linear-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white font-bold rounded-2xl text-xs shadow-md shadow-orange-600/20 transition active:scale-95 flex items-center justify-center gap-2"
@@ -718,7 +784,9 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
                   className="w-full py-2.5 bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold rounded-2xl text-xs border border-orange-200 transition active:scale-95 flex items-center justify-center gap-2"
                 >
                   <MapPin className="w-4 h-4 text-orange-600" />
-                  <span>Hiệu chỉnh vị trí thực tế của tôi (Cù Lao Long Trị,...)</span>
+                  <span>
+                    Hiệu chỉnh vị trí thực tế của tôi (Cù Lao Long Trị,...)
+                  </span>
                 </button>
               )}
             </div>
@@ -751,10 +819,15 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
                   {selectedPlace.category}
                 </span>
                 <span className="text-[10px] text-stone-400">
-                  Thêm lúc: {new Date(selectedPlace.createdAt).toLocaleDateString('vi-VN')}
+                  Thêm lúc:{" "}
+                  {new Date(selectedPlace.createdAt).toLocaleDateString(
+                    "vi-VN",
+                  )}
                 </span>
               </div>
-              <h3 className="text-base font-bold text-stone-900">{selectedPlace.name}</h3>
+              <h3 className="text-base font-bold text-stone-900">
+                {selectedPlace.name}
+              </h3>
             </div>
 
             <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-1">
@@ -765,13 +838,16 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
                 {selectedPlace.address}
               </p>
               <span className="text-[10px] text-stone-400 font-mono block">
-                Tọa độ: {selectedPlace.latitude.toFixed(5)}, {selectedPlace.longitude.toFixed(5)}
+                Tọa độ: {selectedPlace.latitude.toFixed(5)},{" "}
+                {selectedPlace.longitude.toFixed(5)}
               </span>
             </div>
 
             {selectedPlace.notes && (
               <div className="p-3 bg-amber-50/70 rounded-2xl border border-amber-100 space-y-1">
-                <span className="text-[10px] font-bold text-amber-900 block">Ghi chú:</span>
+                <span className="text-[10px] font-bold text-amber-900 block">
+                  Ghi chú:
+                </span>
                 <p className="text-stone-700">{selectedPlace.notes}</p>
               </div>
             )}
@@ -779,7 +855,9 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
             {/* Creator Information */}
             <div className="flex items-center gap-2 pt-1 border-t border-stone-100 text-stone-600">
               <span className="text-[11px]">Người tạo:</span>
-              <span className="font-bold text-stone-800">{selectedPlace.createdByName || 'Thành viên'}</span>
+              <span className="font-bold text-stone-800">
+                {selectedPlace.createdByName || "Thành viên"}
+              </span>
             </div>
 
             {/* Action Buttons: Direct Google Maps Routing, Edit & Delete */}
@@ -789,7 +867,7 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
                 onClick={() =>
                   handleOpenGoogleMapsRoute(
                     selectedPlace.latitude,
-                    selectedPlace.longitude
+                    selectedPlace.longitude,
                   )
                 }
                 className="flex-1 py-3 bg-linear-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white font-bold rounded-2xl text-xs shadow-md shadow-sky-600/20 transition active:scale-95 flex items-center justify-center gap-2"
@@ -799,7 +877,8 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
                 <ExternalLink className="w-3.5 h-3.5 opacity-80" />
               </button>
 
-              {(currentMember.isAdmin || selectedPlace.createdById === currentMember.id) && (
+              {(currentMember.isAdmin ||
+                selectedPlace.createdById === currentMember.id) && (
                 <>
                   <button
                     type="button"
@@ -833,9 +912,14 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
         onClose={() => setShowAddPlaceModal(false)}
         title="Thêm địa điểm mới trên bản đồ"
       >
-        <form onSubmit={handleCreatePlaceSubmit} className="space-y-3.5 text-xs">
+        <form
+          onSubmit={handleCreatePlaceSubmit}
+          className="space-y-3.5 text-xs"
+        >
           <div>
-            <label className="font-bold text-stone-800 block mb-1">Tên địa điểm *</label>
+            <label className="font-bold text-stone-800 block mb-1">
+              Tên địa điểm *
+            </label>
             <input
               type="text"
               required
@@ -860,14 +944,22 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
           {/* Category Selector with Custom Category Support */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="font-bold text-stone-800 block text-xs">Danh mục địa điểm</label>
+              <label className="font-bold text-stone-800 block text-xs">
+                Danh mục địa điểm
+              </label>
               <button
                 type="button"
-                onClick={() => setIsAddingNewPlaceCategory(!isAddingNewPlaceCategory)}
+                onClick={() =>
+                  setIsAddingNewPlaceCategory(!isAddingNewPlaceCategory)
+                }
                 className="text-[11px] font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1"
               >
                 <Plus className="w-3 h-3" />
-                <span>{isAddingNewPlaceCategory ? 'Chọn danh mục có sẵn' : 'Thêm danh mục mới'}</span>
+                <span>
+                  {isAddingNewPlaceCategory
+                    ? "Chọn danh mục có sẵn"
+                    : "Thêm danh mục mới"}
+                </span>
               </button>
             </div>
 
@@ -896,7 +988,9 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
 
           {/* Image Upload / Photo Attachment */}
           <div>
-            <label className="font-bold text-stone-800 block mb-1">Hình ảnh đính kèm (tuỳ chọn)</label>
+            <label className="font-bold text-stone-800 block mb-1">
+              Hình ảnh đính kèm (tuỳ chọn)
+            </label>
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-2 px-3 py-2 bg-stone-100 hover:bg-stone-200/80 rounded-xl cursor-pointer text-stone-700 transition">
                 <Camera className="w-4 h-4 text-orange-600" />
@@ -910,10 +1004,14 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
               </label>
               {newPlaceImage && (
                 <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-stone-200">
-                  <img src={newPlaceImage} alt="Preview" className="w-full h-full object-cover" />
+                  <img
+                    src={newPlaceImage}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                  />
                   <button
                     type="button"
-                    onClick={() => setNewPlaceImage('')}
+                    onClick={() => setNewPlaceImage("")}
                     className="absolute top-0 right-0 bg-black/60 text-white rounded-bl-lg p-0.5"
                   >
                     <X className="w-3 h-3" />
@@ -924,7 +1022,9 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
           </div>
 
           <div>
-            <label className="font-bold text-stone-800 block mb-1">Ghi chú dặn dò</label>
+            <label className="font-bold text-stone-800 block mb-1">
+              Ghi chú dặn dò
+            </label>
             <textarea
               value={newPlaceNotes}
               onChange={(e) => setNewPlaceNotes(e.target.value)}
@@ -951,9 +1051,14 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
         title="Chỉnh sửa địa điểm gia đình"
       >
         {editingPlace && (
-          <form onSubmit={handleUpdatePlaceSubmit} className="space-y-3.5 text-xs">
+          <form
+            onSubmit={handleUpdatePlaceSubmit}
+            className="space-y-3.5 text-xs"
+          >
             <div>
-              <label className="font-bold text-stone-800 block mb-1">Tên địa điểm *</label>
+              <label className="font-bold text-stone-800 block mb-1">
+                Tên địa điểm *
+              </label>
               <input
                 type="text"
                 required
@@ -979,14 +1084,22 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
             {/* Category Selector with Custom Category Support */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="font-bold text-stone-800 block text-xs">Danh mục địa điểm</label>
+                <label className="font-bold text-stone-800 block text-xs">
+                  Danh mục địa điểm
+                </label>
                 <button
                   type="button"
-                  onClick={() => setIsAddingEditPlaceCategory(!isAddingEditPlaceCategory)}
+                  onClick={() =>
+                    setIsAddingEditPlaceCategory(!isAddingEditPlaceCategory)
+                  }
                   className="text-[11px] font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1"
                 >
                   <Plus className="w-3 h-3" />
-                  <span>{isAddingEditPlaceCategory ? 'Chọn danh mục có sẵn' : 'Thêm danh mục mới'}</span>
+                  <span>
+                    {isAddingEditPlaceCategory
+                      ? "Chọn danh mục có sẵn"
+                      : "Thêm danh mục mới"}
+                  </span>
                 </button>
               </div>
 
@@ -1015,7 +1128,9 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
 
             {/* Image Upload / Photo Attachment */}
             <div>
-              <label className="font-bold text-stone-800 block mb-1">Hình ảnh đính kèm (tuỳ chọn)</label>
+              <label className="font-bold text-stone-800 block mb-1">
+                Hình ảnh đính kèm (tuỳ chọn)
+              </label>
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 px-3 py-2 bg-stone-100 hover:bg-stone-200/80 rounded-xl cursor-pointer text-stone-700 transition">
                   <Camera className="w-4 h-4 text-orange-600" />
@@ -1029,10 +1144,14 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
                 </label>
                 {editPlaceImage && (
                   <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-stone-200">
-                    <img src={editPlaceImage} alt="Preview" className="w-full h-full object-cover" />
+                    <img
+                      src={editPlaceImage}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
                     <button
                       type="button"
-                      onClick={() => setEditPlaceImage('')}
+                      onClick={() => setEditPlaceImage("")}
                       className="absolute top-0 right-0 bg-black/60 text-white rounded-bl-lg p-0.5"
                     >
                       <X className="w-3 h-3" />
@@ -1043,7 +1162,9 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
             </div>
 
             <div>
-              <label className="font-bold text-stone-800 block mb-1">Ghi chú dặn dò</label>
+              <label className="font-bold text-stone-800 block mb-1">
+                Ghi chú dặn dò
+              </label>
               <textarea
                 value={editPlaceNotes}
                 onChange={(e) => setEditPlaceNotes(e.target.value)}
@@ -1077,10 +1198,13 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
         isOpen={showAdjustLocationModal}
         onClose={() => setShowAdjustLocationModal(false)}
         onSelectLocation={handleManualUpdateMyLocation}
-        initialAddress={currentMember.locationAddress || 'Cù Lao Long Trị, Long Đức, TP. Trà Vinh'}
+        initialAddress={
+          currentMember.locationAddress ||
+          "Cù Lao Long Trị, Long Đức, TP. Trà Vinh"
+        }
         initialCoords={{
-          lat: currentMember.latitude || 9.9880,
-          lng: currentMember.longitude || 106.3530,
+          lat: currentMember.latitude || 9.988,
+          lng: currentMember.longitude || 106.353,
         }}
       />
     </div>

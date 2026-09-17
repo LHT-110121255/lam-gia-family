@@ -98,7 +98,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   onBackToRooms,
 }) => {
   // Navigation State: 'list' (Rooms Hub) or 'room' (Inside specific Chat Room)
-  const [viewMode, setViewMode] = useState<'list' | 'room'>('room');
+  const [viewMode, setViewMode] = useState<'list' | 'room'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'group' | 'direct'>('all');
 
@@ -273,7 +273,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     setNewRoomDesc('');
   };
 
-  // Filtered Rooms
+  // Filtered Rooms with Zalo style filters
   const filteredRooms = rooms.filter((r) => {
     const matchSearch =
       !searchQuery.trim() ||
@@ -284,57 +284,62 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
     if (filterType === 'group') return r.type !== 'direct';
     if (filterType === 'direct') return r.type === 'direct';
+    if ((filterType as any) === 'unread') return (r.unreadCount || 0) > 0;
     return true;
   });
 
   return (
-    <div className="flex flex-col h-full flex-1 w-full max-w-full pb-safe min-h-0 bg-[#FFFBF7] overflow-hidden select-none">
+    <div className="flex flex-col h-full flex-1 w-full max-w-full pb-safe min-h-0 bg-white overflow-hidden select-none">
       {/* =========================================================================
-          VIEW 1: ROOMS HUB & MANAGEMENT LIST
+          VIEW 1: ROOMS HUB & MANAGEMENT LIST (ZALO STYLE)
       ========================================================================= */}
       {viewMode === 'list' ? (
-        <div className="flex flex-col h-full flex-1 min-h-0 bg-stone-50 overflow-hidden">
-          {/* Header */}
-          <div className="p-3 bg-white border-b border-stone-200/80 space-y-2.5 shrink-0 shadow-2xs">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {onBackToRooms && (
-                  <button
-                    onClick={onBackToRooms}
-                    className="p-1.5 rounded-xl hover:bg-stone-100 text-stone-700 transition"
-                    title="Quay lại tiện ích"
-                  >
-                    <ChevronLeft className="w-5 h-5 text-orange-600" />
-                  </button>
-                )}
-                <div>
-                  <h2 className="text-base font-bold text-stone-900 leading-tight">
-                    Trò chuyện gia đình
-                  </h2>
-                  <p className="text-[11px] text-stone-500">
-                    {rooms.length} phòng chat • Kết nối tức thì
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setShowCreateRoomModal(true)}
-                className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs rounded-xl shadow-xs transition active:scale-95 flex items-center gap-1.5"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Tạo phòng chat</span>
-              </button>
+        <div className="flex flex-col h-full flex-1 min-h-0 bg-white overflow-hidden">
+          {/* Header Bar Zalo Style */}
+          <div className="px-3.5 py-2.5 bg-white border-b border-stone-200/70 flex items-center justify-between shrink-0 shadow-2xs">
+            <div className="flex items-center gap-2">
+              {onBackToRooms && (
+                <button
+                  onClick={onBackToRooms}
+                  className="p-1 rounded-xl hover:bg-stone-100 text-stone-700 transition"
+                  title="Quay lại tiện ích"
+                >
+                  <ChevronLeft className="w-5 h-5 text-orange-600" />
+                </button>
+              )}
+              <h2 className="text-base font-extrabold text-stone-900 tracking-tight">
+                Trò chuyện
+              </h2>
             </div>
 
-            {/* Search Bar */}
-            <div className="relative bg-stone-100 rounded-xl flex items-center px-3 py-1.5 border border-stone-200/70">
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setShowCreateRoomModal(true)}
+                className="p-2 rounded-xl bg-stone-100 hover:bg-orange-50 hover:text-orange-600 text-stone-700 transition active:scale-95 flex items-center justify-center"
+                title="Thêm nhóm mới"
+              >
+                <UserPlus className="w-4.5 h-4.5 text-stone-700" />
+              </button>
+              <button
+                onClick={() => setShowCreateRoomModal(true)}
+                className="p-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold transition active:scale-95 flex items-center justify-center shadow-xs"
+                title="Tạo hội thoại"
+              >
+                <Plus className="w-4.5 h-4.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Search Bar & Quick Online Contacts Strip */}
+          <div className="px-3.5 py-2 bg-white border-b border-stone-100 space-y-2 shrink-0">
+            <div className="relative bg-stone-100/90 rounded-2xl flex items-center px-3 py-1.5 border border-stone-200/50">
               <Search className="w-4 h-4 text-stone-400 mr-2 shrink-0" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm kiếm phòng chat, người thân, tin nhắn..."
-                className="w-full bg-transparent text-xs text-stone-900 focus:outline-hidden"
+                placeholder="Tìm kiếm cuộc trò chuyện, người thân..."
+                className="w-full bg-transparent text-xs text-stone-900 focus:outline-hidden placeholder:text-stone-400"
               />
               {searchQuery && (
                 <button
@@ -346,34 +351,80 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               )}
             </div>
 
-            {/* Filter Tabs */}
-            <div className="flex items-center gap-1.5 pt-0.5">
+            {/* Quick Online Members Bar (Zalo Active Family Contacts) */}
+            <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
+              {allMembers.filter((m) => m.id !== currentMember.id).map((member) => (
+                <button
+                  key={member.id}
+                  onClick={() => {
+                    const directRoom = rooms.find(
+                      (r) => r.type === 'direct' && r.memberIds.includes(member.id)
+                    );
+                    if (directRoom) {
+                      onSelectRoom(directRoom.id);
+                      setViewMode('room');
+                    } else if (onCreateRoom) {
+                      onCreateRoom({
+                        name: member.name,
+                        type: 'direct',
+                        memberIds: [currentMember.id, member.id],
+                      });
+                    }
+                  }}
+                  className="flex flex-col items-center shrink-0 group focus:outline-hidden"
+                >
+                  <Avatar
+                    src={member.avatar}
+                    name={member.name}
+                    size="md"
+                    online={member.onlineStatus === 'online'}
+                    className="group-hover:scale-105 transition-transform"
+                  />
+                  <span className="text-[10px] font-medium text-stone-700 mt-1 max-w-[56px] truncate text-center">
+                    {member.name.split(' ').slice(-1)[0]}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Zalo Filter Tabs: Tất cả, Chưa đọc, Nhóm, Chat 1-1 */}
+            <div className="flex items-center gap-1.5 pt-0.5 border-t border-stone-100">
               <button
                 onClick={() => setFilterType('all')}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition ${
+                className={`px-3 py-1 rounded-full text-xs font-bold transition ${
                   filterType === 'all'
-                    ? 'bg-orange-600 text-white shadow-xs'
-                    : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-100'
+                    ? 'bg-orange-600 text-white shadow-2xs'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200/70'
                 }`}
               >
                 Tất cả ({rooms.length})
               </button>
               <button
-                onClick={() => setFilterType('group')}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition ${
-                  filterType === 'group'
-                    ? 'bg-orange-600 text-white shadow-xs'
-                    : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-100'
+                onClick={() => setFilterType('unread' as any)}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition ${
+                  (filterType as any) === 'unread'
+                    ? 'bg-orange-600 text-white shadow-2xs'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200/70'
                 }`}
               >
-                Nhóm gia đình
+                Chưa đọc
+              </button>
+              <button
+                onClick={() => setFilterType('group')}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition ${
+                  filterType === 'group'
+                    ? 'bg-orange-600 text-white shadow-2xs'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200/70'
+                }`}
+              >
+                Nhóm
               </button>
               <button
                 onClick={() => setFilterType('direct')}
-                className={`px-3 py-1 rounded-xl text-xs font-bold transition ${
+                className={`px-3 py-1 rounded-full text-xs font-bold transition ${
                   filterType === 'direct'
-                    ? 'bg-orange-600 text-white shadow-xs'
-                    : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-100'
+                    ? 'bg-orange-600 text-white shadow-2xs'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200/70'
                 }`}
               >
                 Chat 1-1
@@ -381,25 +432,28 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             </div>
           </div>
 
-          {/* Rooms List Stream */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2 overscroll-contain">
+          {/* Rooms Flat List Stream Zalo Style */}
+          <div className="flex-1 overflow-y-auto divide-y divide-stone-100 bg-white overscroll-contain">
             {filteredRooms.length === 0 ? (
-              <div className="p-8 bg-white rounded-3xl border border-stone-200/80 text-center space-y-2 mt-4">
-                <MessageCircle className="w-8 h-8 text-stone-400 mx-auto" />
+              <div className="p-8 bg-white text-center space-y-2 mt-4">
+                <MessageCircle className="w-8 h-8 text-stone-300 mx-auto" />
                 <p className="text-xs text-stone-500 font-medium">
-                  Không tìm thấy phòng trò chuyện nào phù hợp.
+                  Không tìm thấy cuộc trò chuyện nào.
                 </p>
                 <button
                   onClick={() => setShowCreateRoomModal(true)}
                   className="px-4 py-2 bg-orange-50 text-orange-700 text-xs font-bold rounded-xl hover:bg-orange-100"
                 >
-                  + Tạo phòng trò chuyện mới
+                  + Tạo hội thoại mới
                 </button>
               </div>
             ) : (
               filteredRooms.map((room) => {
                 const isSelected = room.id === activeRoom.id;
-                const membersInRoom = room.memberIds.map(getMember).filter(Boolean);
+                const isDirect = room.type === 'direct';
+                const otherMember = isDirect
+                  ? allMembers.find((m) => room.memberIds.includes(m.id) && m.id !== currentMember.id)
+                  : null;
 
                 return (
                   <div
@@ -408,55 +462,57 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       onSelectRoom(room.id);
                       setViewMode('room');
                     }}
-                    className={`p-3 bg-white hover:bg-orange-50/50 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 shadow-2xs ${
-                      isSelected
-                        ? 'border-orange-300 ring-2 ring-orange-500/20'
-                        : 'border-stone-200/80'
+                    className={`px-3.5 py-3 hover:bg-stone-50 transition cursor-pointer flex items-center justify-between gap-3 ${
+                      isSelected ? 'bg-orange-50/50' : ''
                     }`}
                   >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      {/* Room Avatar */}
-                      <div className="relative shrink-0">
-                        {room.avatar ? (
-                          <img
-                            src={room.avatar}
-                            alt={room.name}
-                            className="w-12 h-12 rounded-2xl object-cover border border-stone-200 shadow-2xs"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-orange-400 to-amber-600 flex items-center justify-center text-white font-bold text-base shadow-2xs">
-                            {room.name.slice(0, 2).toUpperCase()}
-                          </div>
-                        )}
-                        {room.unreadCount > 0 && (
-                          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white font-bold text-[10px] rounded-full flex items-center justify-center ring-2 ring-white">
-                            {room.unreadCount}
-                          </span>
-                        )}
+                    {/* Room Avatar */}
+                    <div className="relative shrink-0">
+                      {isDirect && otherMember ? (
+                        <Avatar
+                          src={otherMember.avatar}
+                          name={otherMember.name}
+                          size="lg"
+                          online={otherMember.onlineStatus === 'online'}
+                        />
+                      ) : room.avatar ? (
+                        <img
+                          src={room.avatar}
+                          alt={room.name}
+                          className="w-12 h-12 rounded-full object-cover border border-stone-200 shadow-2xs"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-linear-to-br from-orange-500 via-amber-500 to-orange-600 flex items-center justify-center text-white font-extrabold text-sm shadow-2xs">
+                          {room.name.slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
+
+                      {room.unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 bg-rose-500 text-white font-bold text-[10px] rounded-full flex items-center justify-center ring-2 ring-white">
+                          {room.unreadCount}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Room Details */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className={`text-xs font-bold truncate ${room.unreadCount > 0 ? 'text-stone-900 font-black' : 'text-stone-800'}`}>
+                          {isDirect && otherMember ? otherMember.name : room.name}
+                        </h4>
+                        <span className={`text-[10px] shrink-0 font-medium ${room.unreadCount > 0 ? 'text-orange-600 font-bold' : 'text-stone-400'}`}>
+                          {room.lastMessageTime || '08:26'}
+                        </span>
                       </div>
 
-                      {/* Room Details */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-1">
-                          <h4 className="text-xs font-bold text-stone-900 truncate">
-                            {room.name}
-                          </h4>
-                          <span className="text-[10px] text-stone-400 shrink-0 font-mono">
-                            {room.lastMessageTime || ''}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-stone-500 truncate mt-0.5">
+                      <div className="flex items-center justify-between gap-2 mt-0.5">
+                        <p className={`text-xs truncate ${room.unreadCount > 0 ? 'font-extrabold text-stone-900' : 'text-stone-500'}`}>
                           {room.lastMessage || 'Chưa có tin nhắn nào'}
                         </p>
-                        <div className="flex items-center gap-1.5 mt-1 text-[10px] text-stone-400">
-                          <Users className="w-3 h-3 text-stone-400" />
-                          <span>{room.memberIds.length} thành viên</span>
-                          {room.pinnedMessageText && (
-                            <span className="flex items-center gap-0.5 text-amber-600 font-medium">
-                              • <Pin className="w-2.5 h-2.5" /> Có ghim
-                            </span>
-                          )}
-                        </div>
+
+                        {room.pinnedMessageText && (
+                          <Pin className="w-3 h-3 text-amber-500 shrink-0" />
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1060,6 +1116,70 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 );
               })}
             </div>
+          </div>
+
+          {/* Shared Media & Links Asset Hub */}
+          <div className="pt-2 border-t border-stone-100">
+            <span className="font-bold text-stone-800 block mb-2">
+              Kho tài nguyên đã chia sẻ (Ảnh & Liên kết)
+            </span>
+            {(() => {
+              const sharedMedia = messages.reduce<string[]>((acc, m) => {
+                if (m.mediaUrl) acc.push(m.mediaUrl);
+                if (m.mediaUrls) acc.push(...m.mediaUrls);
+                return acc;
+              }, []);
+
+              const sharedLinks = messages.reduce<{ url: string; text: string }[]>((acc, m) => {
+                if (m.text) {
+                  const matches = m.text.match(/(https?:\/\/[^\s]+)/g);
+                  if (matches) {
+                    matches.forEach((url) => acc.push({ url, text: m.text }));
+                  }
+                }
+                return acc;
+              }, []);
+
+              return (
+                <div className="space-y-3">
+                  {/* Shared Media Photos */}
+                  {sharedMedia.length > 0 ? (
+                    <div className="grid grid-cols-4 gap-1.5 max-h-36 overflow-y-auto p-2 bg-stone-50 rounded-2xl border border-stone-200">
+                      {sharedMedia.map((url, i) => (
+                        <img
+                          key={i}
+                          src={url}
+                          alt="Shared Media"
+                          onClick={() => setLightboxPhoto(url)}
+                          className="w-full h-14 object-cover rounded-xl cursor-pointer hover:opacity-85 transition border border-stone-200"
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-stone-400 italic bg-stone-50 p-2.5 rounded-xl border border-stone-100 text-center">
+                      Chưa có hình ảnh nào được chia sẻ trong phòng này
+                    </p>
+                  )}
+
+                  {/* Shared Links */}
+                  {sharedLinks.length > 0 && (
+                    <div className="space-y-1 max-h-28 overflow-y-auto p-2 bg-stone-50 rounded-2xl border border-stone-200">
+                      {sharedLinks.map((item, i) => (
+                        <a
+                          key={i}
+                          href={item.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block p-1.5 bg-white hover:bg-orange-50 rounded-xl border border-stone-200/80 text-[11px] text-orange-700 font-medium truncate"
+                        >
+                          🔗 {item.url}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Delete Room Action */}

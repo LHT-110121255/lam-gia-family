@@ -131,7 +131,41 @@ export const INITIAL_WALLET: FamilyWallet = {
   splitBills: [],
 };
 
-export const INITIAL_NOTIFICATIONS: AppNotification[] = [];
+export const INITIAL_NOTIFICATIONS: AppNotification[] = [
+  {
+    id: 'notif-1',
+    category: 'event',
+    type: 'event',
+    title: 'Sự kiện sắp diễn ra 📅',
+    content: 'Sinh nhật Mẹ Gấm sẽ diễn ra vào tuần tới. Đừng quên chuẩn bị quà nhé!',
+    time: '10 phút trước',
+    timestamp: '10 phút trước',
+    read: false,
+    targetTab: 'more',
+  },
+  {
+    id: 'notif-2',
+    category: 'task',
+    type: 'task',
+    title: 'Nhiệm vụ gia đình mới 📝',
+    content: 'Lâm Huệ Trung vừa hoàn thành công việc: "Mua trái cây cúng rằm".',
+    time: '1 giờ trước',
+    timestamp: '1 giờ trước',
+    read: false,
+    targetTab: 'more',
+  },
+  {
+    id: 'notif-3',
+    category: 'family',
+    type: 'family',
+    title: 'Bài viết mới 📸',
+    content: 'Đại Gia Đình vừa chia sẻ khoảnh khắc mới trên bảng tin gia đình.',
+    time: '3 giờ trước',
+    timestamp: '3 giờ trước',
+    read: true,
+    targetTab: 'home',
+  },
+];
 
 export const INITIAL_SETTINGS: AppSettings = {
   theme: 'light',

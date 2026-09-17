@@ -66,7 +66,24 @@ class FamilyService {
   private initialized = false;
 
   constructor() {
+    this.checkAppVersion();
     this.initRealtimeSync();
+  }
+
+  private checkAppVersion() {
+    try {
+      const currentVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.0';
+      const storedVersion = localStorage.getItem('family_hub_app_version');
+      if (!storedVersion) {
+        localStorage.setItem('family_hub_app_version', currentVersion);
+        console.log(`🚀 [Lâm Gia Hub] Khởi chạy phiên bản v${currentVersion}`);
+      } else if (storedVersion !== currentVersion) {
+        console.log(`✨ [Lâm Gia Hub] Đã nâng cấp từ v${storedVersion} lên v${currentVersion}`);
+        localStorage.setItem('family_hub_app_version', currentVersion);
+      }
+    } catch {
+      // Ignored if local storage unavailable
+    }
   }
 
   private initRealtimeSync() {
@@ -395,6 +412,96 @@ class FamilyService {
       this.notify();
     });
 
+    // 11. Lắng nghe Phòng Chat Realtime (Rooms Realtime)
+    socketService.onNewRoom((room) => {
+      if (!room) return;
+      const rooms = this.getChatRooms();
+      const id = room._id || room.id;
+      if (!rooms.some((r) => r.id === id)) {
+        const formatted: ChatRoom = {
+          id,
+          name: room.name,
+          type: room.type || 'custom',
+          memberIds: room.memberIds || [],
+          adminIds: [room.createdById || ''],
+          createdById: room.createdById || '',
+          avatar: room.avatar || '',
+          description: room.description || '',
+          unreadCount: 0,
+          lastMessage: room.lastMessage || 'Đã tạo phòng trò chuyện mới',
+          lastMessageTime: room.lastMessageTime || 'Vừa xong',
+          createdAt: room.createdAt || new Date().toISOString(),
+        };
+        save('chatRooms', [formatted, ...rooms]);
+        this.notify();
+      }
+    });
+
+    socketService.onUpdateRoom((room) => {
+      if (!room) return;
+      const rooms = this.getChatRooms();
+      const id = room._id || room.id;
+      const next = rooms.map((r) => (r.id === id ? { ...r, ...room, id } : r));
+      save('chatRooms', next);
+      this.notify();
+    });
+
+    socketService.onDeleteRoom(({ roomId }) => {
+      if (!roomId) return;
+      const rooms = this.getChatRooms().filter((r) => r.id !== roomId);
+      save('chatRooms', rooms);
+      this.notify();
+    });
+
+    socketService.onUserStatusChanged(({ userId, online, lastSeen }) => {
+      if (!userId) return;
+      const members = this.getAllMembers();
+      const idx = members.findIndex((m) => m.id === userId || m.username === userId);
+      if (idx >= 0) {
+        members[idx] = {
+          ...members[idx],
+          onlineStatus: online ? 'online' : 'offline',
+          lastSeen: lastSeen || (online ? 'Vừa xong' : 'Ngoại tuyến'),
+        };
+        save('members', members);
+        this.notify();
+      }
+    });
+
+    // 12. Lắng nghe Thông báo gia đình Realtime (In-App Notifications)
+    socketService.onNewNotification((notif) => {
+      if (!notif) return;
+      const notifications = this.getNotifications();
+      const id = notif._id || notif.id;
+      if (!notifications.some((n) => n.id === id)) {
+        const newNotif: AppNotification = {
+          id,
+          title: notif.title,
+          content: notif.content,
+          type: notif.type || 'family',
+          category: (notif.type as any) || 'family',
+          time: 'Vừa xong',
+          timestamp: notif.createdAt ? new Date(notif.createdAt).toLocaleDateString('vi-VN') : 'Vừa xong',
+          read: notif.read || false,
+          targetTab: notif.targetTab || 'home',
+          targetSubId: notif.targetId,
+          senderName: notif.senderName,
+          senderAvatar: notif.senderAvatar,
+        };
+        save('notifications', [newNotif, ...notifications]);
+        this.notify();
+
+        // Push OS popup
+        const settings = this.getSettings();
+        if (settings.pushNotifications) {
+          this.triggerSystemNotification(notif.title, {
+            body: notif.content,
+            tag: id,
+          });
+        }
+      }
+    });
+
     // 9. Lắng nghe thay đổi storage từ các tab khác trong cùng trình duyệt
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', (e) => {
@@ -406,6 +513,7 @@ class FamilyService {
 
     // 10. Khởi chạy đồng bộ tất cả dữ liệu từ Backend
     this.syncUsersFromBackend();
+    this.syncRoomsFromBackend();
     this.syncPostsFromBackend();
     this.syncPlacesFromBackend();
     this.syncEventsFromBackend();
@@ -415,6 +523,7 @@ class FamilyService {
     this.syncMilestonesFromBackend();
     this.syncPollsFromBackend();
     this.syncFamilyInfoFromBackend();
+    this.syncNotificationsFromBackend();
   }
 
   private notify() {
@@ -986,6 +1095,13 @@ class FamilyService {
     save('posts', nextPosts);
     this.notify();
 
+    this.createNotification({
+      title: 'Bài viết gia đình mới 📸',
+      content: `${currentMember.name || 'Thành viên'} vừa chia sẻ bài viết: "${(post.content || 'Khoảnh khắc mới').slice(0, 40)}..."`,
+      type: 'family',
+      targetTab: 'home',
+    });
+
     // Async sync to Mongo API backend
     import('./api').then(({ api }) => {
       api.createPost({
@@ -1035,6 +1151,14 @@ class FamilyService {
     save('posts', posts);
     this.notify();
 
+    const currentMember = this.getMemberById(memberId) || this.getCurrentMember();
+    this.createNotification({
+      title: 'Cảm xúc mới ❤️',
+      content: `${currentMember.name || 'Thành viên'} vừa tương tác với bài viết trên bảng tin.`,
+      type: 'family',
+      targetTab: 'home',
+    });
+
     // Async sync to backend
     import('./api').then(({ api }) => {
       api.likePost(postId, memberId).catch((err) => console.error('API like error:', err));
@@ -1057,6 +1181,13 @@ class FamilyService {
     });
     save('posts', posts);
     this.notify();
+
+    this.createNotification({
+      title: 'Bình luận mới 💬',
+      content: `${currentMember.name || 'Thành viên'} vừa bình luận: "${content.slice(0, 40)}..."`,
+      type: 'family',
+      targetTab: 'home',
+    });
 
     // Async sync to backend
     import('./api').then(({ api }) => {
@@ -1385,6 +1516,13 @@ class FamilyService {
     save('events', [...events, newEvent]);
     this.notify();
 
+    this.createNotification({
+      title: 'Sự kiện gia đình mới 📅',
+      content: `Sự kiện "${event.title}" (${event.date}) đã được thêm vào lịch gia đình.`,
+      type: 'event',
+      targetTab: 'more',
+    });
+
     import('./api').then(({ api }) => {
       api.createEvent(newEvent).then((res) => {
         if (res && (res._id || res.id)) {
@@ -1460,6 +1598,15 @@ class FamilyService {
     });
     save('tasks', lists);
     this.notify();
+
+    if (willComplete) {
+      this.createNotification({
+        title: 'Nhiệm vụ gia đình hoàn thành ✅',
+        content: `${completedByName} đã hoàn thành một công việc gia đình.`,
+        type: 'task',
+        targetTab: 'more',
+      });
+    }
 
     import('./api').then(({ api }) => {
       api.toggleChecklistItem(listId, itemId, willComplete ? completedByName : undefined, willComplete ? 'Vừa xong' : undefined)
@@ -1596,6 +1743,34 @@ class FamilyService {
     return load('chatRooms', INITIAL_CHAT_ROOMS);
   }
 
+  public syncRoomsFromBackend(): void {
+    const currentMember = this.getCurrentMember();
+    import('./api').then(({ api }) => {
+      api.getRooms(currentMember?.id).then((remoteRooms) => {
+        if (remoteRooms && Array.isArray(remoteRooms) && remoteRooms.length > 0) {
+          const mapped: ChatRoom[] = remoteRooms.map((r: any) => ({
+            id: r._id?.toString() || r.id,
+            name: r.name,
+            type: r.type || 'custom',
+            memberIds: r.memberIds || [],
+            adminIds: [r.createdById || ''],
+            createdById: r.createdById || '',
+            avatar: r.avatar || '',
+            description: r.description || '',
+            pinnedMessageText: r.pinnedMessageText || '',
+            pinnedMessageId: r.pinnedMessageId || '',
+            unreadCount: 0,
+            lastMessage: r.lastMessage || 'Chưa có tin nhắn nào',
+            lastMessageTime: r.lastMessageTime || '',
+            createdAt: r.createdAt || new Date().toISOString(),
+          }));
+          save('chatRooms', mapped);
+          this.notify();
+        }
+      }).catch((err) => console.warn('Sync rooms note:', err));
+    });
+  }
+
   public getMessages(roomId: string): ChatMessage[] {
     const all = load<Record<string, ChatMessage[]>>('chatMessages', INITIAL_MESSAGES);
     const list = all[roomId] || [];
@@ -1637,23 +1812,25 @@ class FamilyService {
 
     save('chatRooms', [newRoom, ...rooms]);
 
-    // Send system message
-    const all = load<Record<string, ChatMessage[]>>('chatMessages', INITIAL_MESSAGES);
-    const now = new Date();
-    const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-    all[newRoom.id] = [
-      {
-        id: 'msg-init-' + Date.now(),
-        roomId: newRoom.id,
-        senderId: currentMember.id,
-        text: `🎉 ${currentMember.name} đã tạo phòng trò chuyện "${newRoom.name}"`,
-        type: 'system',
-        timestamp: timeStr,
-        readBy: [currentMember.id],
-        reactions: [],
-      },
-    ];
-    save('chatMessages', all);
+    import('./api').then(({ api }) => {
+      api.createRoom({
+        name: newRoom.name,
+        type: newRoom.type,
+        memberIds: newRoom.memberIds,
+        avatar: newRoom.avatar,
+        description: newRoom.description,
+        createdById: newRoom.createdById,
+      }).then((res) => {
+        if (res && (res._id || res.id)) {
+          const realId = res._id?.toString() || res.id;
+          const next = this.getChatRooms().map((r) =>
+            r.id === newRoom.id ? { ...r, id: realId } : r
+          );
+          save('chatRooms', next);
+          this.notify();
+        }
+      }).catch((err) => console.warn('Create room remote note:', err));
+    });
 
     this.notify();
     return newRoom;
@@ -1666,6 +1843,10 @@ class FamilyService {
     });
     save('chatRooms', rooms);
     this.notify();
+
+    import('./api').then(({ api }) => {
+      api.updateRoom(roomId, updates).catch((err) => console.warn('Update room remote note:', err));
+    });
   }
 
   public deleteChatRoom(roomId: string): void {
@@ -1677,6 +1858,10 @@ class FamilyService {
     save('chatMessages', all);
 
     this.notify();
+
+    import('./api').then(({ api }) => {
+      api.deleteRoom(roomId).catch((err) => console.warn('Delete room remote note:', err));
+    });
   }
 
   public addMembersToRoom(roomId: string, memberIdsToAdd: string[]): void {
@@ -1687,6 +1872,10 @@ class FamilyService {
     });
     save('chatRooms', rooms);
     this.notify();
+
+    import('./api').then(({ api }) => {
+      api.addMembersToRoom(roomId, memberIdsToAdd).catch((err) => console.warn('Add members to room note:', err));
+    });
   }
 
   public removeMemberFromRoom(roomId: string, memberIdToRemove: string): void {
@@ -1697,6 +1886,10 @@ class FamilyService {
     });
     save('chatRooms', rooms);
     this.notify();
+
+    import('./api').then(({ api }) => {
+      api.removeMemberFromRoom(roomId, memberIdToRemove).catch((err) => console.warn('Remove member from room note:', err));
+    });
   }
 
   private chatSocketInitialized = false;
@@ -2249,22 +2442,7 @@ class FamilyService {
     });
   }
 
-  // --- NOTIFICATIONS ---
-  public getNotifications(): AppNotification[] {
-    return load('notifications', INITIAL_NOTIFICATIONS);
-  }
 
-  public markNotificationAsRead(id: string): void {
-    const list = this.getNotifications().map((n) => (n.id === id ? { ...n, read: true } : n));
-    save('notifications', list);
-    this.notify();
-  }
-
-  public markAllNotificationsAsRead(): void {
-    const list = this.getNotifications().map((n) => ({ ...n, read: true }));
-    save('notifications', list);
-    this.notify();
-  }
 
   // --- FAMILY PLACES (BẢN ĐỒ ĐỊA ĐIỂM GIA ĐÌNH) ---
   public getPlaces(): FamilyPlace[] {
@@ -2443,6 +2621,149 @@ class FamilyService {
     };
   }
 
+  // --- NOTIFICATION SYSTEM & PWA PUSH ---
+  public requestNotificationPermission(): void {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+  }
+
+  public triggerSystemNotification(title: string, options?: NotificationOptions): void {
+    try {
+      if (typeof window === 'undefined' || !('Notification' in window)) return;
+      if (Notification.permission === 'granted') {
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.ready
+            .then((reg) => {
+              reg.showNotification(title, {
+                icon: '/pwa-192x192.png',
+                badge: '/pwa-192x192.png',
+                vibrate: [200, 100, 200],
+                ...options,
+              });
+            })
+            .catch(() => {
+              new Notification(title, { icon: '/pwa-192x192.png', ...options });
+            });
+        } else {
+          new Notification(title, { icon: '/pwa-192x192.png', ...options });
+        }
+      }
+    } catch (e) {
+      console.warn('System notification error:', e);
+    }
+  }
+
+  public syncNotificationsFromBackend(): void {
+    import('./api').then(({ api, tokenStorage }) => {
+      const currentMember = this.getCurrentMember();
+      const user = tokenStorage.getUser();
+      const userId = user?._id || user?.id || currentMember?.id;
+      api.getNotifications(userId).then((remoteNotifs) => {
+        if (remoteNotifs && Array.isArray(remoteNotifs)) {
+          const mapped: AppNotification[] = remoteNotifs.map((n: any) => ({
+            id: n._id || n.id,
+            title: n.title,
+            content: n.content,
+            type: n.type || 'family',
+            category: (n.type as any) || 'family',
+            time: n.createdAt ? new Date(n.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : 'Vừa xong',
+            timestamp: n.createdAt ? new Date(n.createdAt).toLocaleDateString('vi-VN') : 'Vừa xong',
+            read: n.read || false,
+            targetTab: n.targetTab || 'home',
+            targetSubId: n.targetId,
+            senderName: n.senderName,
+            senderAvatar: n.senderAvatar,
+          }));
+          save('notifications', mapped);
+          this.notify();
+        }
+      }).catch((err) => console.warn('Sync notifications remote note:', err));
+    });
+  }
+
+  public getNotifications(): AppNotification[] {
+    return load<AppNotification[]>('notifications', INITIAL_NOTIFICATIONS);
+  }
+
+  public createNotification(data: {
+    title: string;
+    content: string;
+    type?: string;
+    category?: any;
+    targetTab?: string;
+    targetSubId?: string;
+  }): AppNotification {
+    const notifications = this.getNotifications();
+    const currentMember = this.getCurrentMember();
+    const newNotif: AppNotification = {
+      id: 'notif-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+      title: data.title,
+      content: data.content,
+      type: data.type || 'family',
+      category: data.category || (data.type as any) || 'family',
+      time: 'Vừa xong',
+      timestamp: 'Vừa xong',
+      read: false,
+      targetTab: data.targetTab || 'home',
+      targetSubId: data.targetSubId,
+    };
+    const updated = [newNotif, ...notifications];
+    save('notifications', updated);
+    this.notify();
+
+    // Async sync to remote API
+    import('./api').then(({ api, tokenStorage }) => {
+      const user = tokenStorage.getUser();
+      api.createNotification({
+        senderId: user?._id || user?.id || currentMember?.id,
+        senderName: currentMember?.name,
+        senderAvatar: currentMember?.avatar,
+        title: data.title,
+        content: data.content,
+        type: data.type || 'family',
+        targetTab: data.targetTab || 'home',
+        targetId: data.targetSubId || '',
+      }).catch((err) => console.warn('Remote create notification note:', err));
+    });
+
+    // Push OS notification
+    const settings = this.getSettings();
+    if (settings.pushNotifications) {
+      this.triggerSystemNotification(data.title, {
+        body: data.content,
+        tag: newNotif.id,
+      });
+    }
+
+    return newNotif;
+  }
+
+  public markNotificationAsRead(id: string): void {
+    const notifications = this.getNotifications();
+    const updated = notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
+    save('notifications', updated);
+    this.notify();
+
+    import('./api').then(({ api }) => {
+      api.markNotificationRead(id).catch((err) => console.warn('Remote mark notification read note:', err));
+    });
+  }
+
+  public markAllNotificationsAsRead(): void {
+    const notifications = this.getNotifications();
+    const updated = notifications.map((n) => ({ ...n, read: true }));
+    save('notifications', updated);
+    this.notify();
+
+    import('./api').then(({ api, tokenStorage }) => {
+      const currentMember = this.getCurrentMember();
+      const user = tokenStorage.getUser();
+      const userId = user?._id || user?.id || currentMember?.id;
+      api.markAllNotificationsRead(userId).catch((err) => console.warn('Remote mark all read note:', err));
+    });
+  }
+
   public async clearAppCache(): Promise<void> {
     try {
       if ('caches' in window) {
@@ -2490,9 +2811,16 @@ class FamilyService {
         }
       });
 
-      // Đồng bộ lại từ backend
+      // Đồng bộ lại tất cả dữ liệu từ backend MongoDB Atlas
       this.syncPostsFromBackend();
       this.syncUsersFromBackend();
+      this.syncEventsFromBackend();
+      this.syncChecklistsFromBackend();
+      this.syncPollsFromBackend();
+      this.syncFinanceFromBackend();
+      this.syncAlbumsFromBackend();
+      this.syncMilestonesFromBackend();
+      this.syncPlacesFromBackend();
 
       this.notify();
     } catch (e) {

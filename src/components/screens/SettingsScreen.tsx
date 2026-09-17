@@ -73,7 +73,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   // GPS & Location Testing State
   const [isTestingLocation, setIsTestingLocation] = useState(false);
-  const [locationMessage, setLocationMessage] = useState<{ text: string; isError?: boolean } | null>(null);
+  const [locationMessage, setLocationMessage] = useState<{
+    text: string;
+    isError?: boolean;
+  } | null>(null);
 
   const handleManualLocationSync = async () => {
     setIsTestingLocation(true);
@@ -82,12 +85,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     setIsTestingLocation(false);
     if (result.success) {
       setLocationMessage({
-        text: `Đã cập nhật vị trí mới nhất: ${result.address || 'Thành công'}`,
+        text: `Đã cập nhật vị trí mới nhất: ${result.address || "Thành công"}`,
         isError: false,
       });
     } else {
       setLocationMessage({
-        text: `Không thể lấy tọa độ GPS: ${result.error || 'Vui lòng cấp quyền định vị'}`,
+        text: `Không thể lấy tọa độ GPS: ${result.error || "Vui lòng cấp quyền định vị"}`,
         isError: true,
       });
     }
@@ -378,27 +381,27 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 {[
                   {
                     val: 5,
-                    title: '5 phút / lần',
-                    badge: 'Chính xác cao',
-                    desc: 'Phù hợp khi di chuyển',
+                    title: "5 phút / lần",
+                    badge: "Chính xác cao",
+                    desc: "Phù hợp khi di chuyển",
                   },
                   {
                     val: 10,
-                    title: '10 phút / lần',
-                    badge: 'Khuyên dùng',
-                    desc: 'Cân bằng pin tối ưu',
+                    title: "10 phút / lần",
+                    badge: "Khuyên dùng",
+                    desc: "Cân bằng pin tối ưu",
                   },
                   {
                     val: 15,
-                    title: '15 phút / lần',
-                    badge: 'Tiết kiệm pin',
-                    desc: 'Tối ưu pin tối đa',
+                    title: "15 phút / lần",
+                    badge: "Tiết kiệm pin",
+                    desc: "Tối ưu pin tối đa",
                   },
                   {
                     val: 0,
-                    title: 'Thủ công',
-                    badge: 'Khi mở bản đồ',
-                    desc: 'Chỉ khi vào bản đồ',
+                    title: "Thủ công",
+                    badge: "Khi mở bản đồ",
+                    desc: "Chỉ khi vào bản đồ",
                   },
                 ].map((item) => {
                   const currentInterval = settings.locationSyncInterval ?? 10;
@@ -414,8 +417,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                       }
                       className={`p-2.5 rounded-2xl border text-left transition flex flex-col justify-between ${
                         isSelected
-                          ? 'border-orange-500 bg-orange-50/70 text-orange-950 font-bold shadow-xs'
-                          : 'border-stone-200 bg-stone-50 text-stone-700 hover:bg-stone-100'
+                          ? "border-orange-500 bg-orange-50/70 text-orange-950 font-bold shadow-xs"
+                          : "border-stone-200 bg-stone-50 text-stone-700 hover:bg-stone-100"
                       }`}
                     >
                       <div className="flex items-center justify-between w-full mb-1">
@@ -464,20 +467,20 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 </span>
                 <span className="text-[10px] text-orange-600 font-medium">
                   {locationSyncService.formatLastUpdated(
-                    currentMember.lastLocationUpdated
+                    currentMember.lastLocationUpdated,
                   )}
                 </span>
               </div>
               <p className="text-xs font-semibold text-stone-800 line-clamp-2">
-                {currentMember.locationAddress || 'Chưa có thông tin tọa độ'}
+                {currentMember.locationAddress || "Chưa có thông tin tọa độ"}
               </p>
 
               {locationMessage && (
                 <div
                   className={`p-2 rounded-xl text-[11px] font-bold flex items-center gap-1.5 ${
                     locationMessage.isError
-                      ? 'bg-red-50 text-red-800 border border-red-200'
-                      : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                      ? "bg-red-50 text-red-800 border border-red-200"
+                      : "bg-emerald-50 text-emerald-800 border border-emerald-200"
                   }`}
                 >
                   <Navigation className="w-3.5 h-3.5 shrink-0" />
@@ -507,7 +510,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </div>
         ) : (
           <div className="p-3 bg-stone-50 rounded-2xl border border-stone-100 text-stone-500 text-[11px] leading-relaxed">
-            Bạn đang tắt chia sẻ vị trí. Các thành viên khác trong gia đình sẽ không thấy vị trí hiện tại của bạn trên bản đồ.
+            Bạn đang tắt chia sẻ vị trí. Các thành viên khác trong gia đình sẽ
+            không thấy vị trí hiện tại của bạn trên bản đồ.
           </div>
         )}
       </div>
@@ -644,11 +648,25 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs font-bold text-stone-700">
             <Smartphone className="w-4 h-4 text-stone-500" />
-            <span>Lâm Gia PWA v1.0.0</span>
+            <span>
+              Phiên bản v
+              {typeof __APP_VERSION__ !== "undefined"
+                ? __APP_VERSION__
+                : "1.0.0"}
+            </span>
           </div>
           <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
             Đã sẵn sàng Offline
           </span>
+        </div>
+        <div className="text-[10px] text-stone-400 flex items-center justify-between pt-1 border-t border-stone-200/60">
+          <span>
+            Bản dựng:{" "}
+            {typeof __BUILD_TIME__ !== "undefined"
+              ? new Date(__BUILD_TIME__).toLocaleString("vi-VN")
+              : "Mới nhất"}
+          </span>
+          <span>Hệ điều hành: Web PWA</span>
         </div>
       </div>
 

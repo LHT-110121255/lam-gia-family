@@ -6,7 +6,10 @@ const getSocketUrl = () => {
   }
   if (typeof window !== "undefined") {
     const origin = window.location.origin;
-    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+    if (
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+    ) {
       return "http://localhost:5001";
     }
     return origin;
@@ -34,22 +37,28 @@ class SocketService {
     }
 
     this.socket = io(getSocketUrl(), {
-      transports: ["websocket", "polling"],
+      transports: ["polling", "websocket"],
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: Infinity,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
     });
 
     this.socket.on("connect", () => {
-      console.log("⚡ Socket connected:", this.socket?.id);
       if (this.currentUserId) {
         this.socket?.emit("register_user", { userId: this.currentUserId });
       }
       this.joinedRooms.forEach((roomId) => {
         this.socket?.emit("join_room", roomId);
       });
+    });
+
+    this.socket.on("connect_error", (err) => {
+      console.warn(
+        "⚠️ Socket connection error (kiểm tra server backend trên cổng 5001):",
+        err.message,
+      );
     });
 
     this.socket.on("reconnect", (attempt) => {
@@ -62,8 +71,8 @@ class SocketService {
       });
     });
 
-    this.socket.on("disconnect", () => {
-      console.log("🔌 Socket disconnected");
+    this.socket.on("disconnect", (reason) => {
+      console.log("🔌 Socket disconnected:", reason);
     });
   }
 
@@ -91,7 +100,9 @@ class SocketService {
     this.socket?.emit("delete_message", { roomId, messageId });
   }
 
-  onMessageDeleted(callback: (data: { roomId: string; messageId: string }) => void) {
+  onMessageDeleted(
+    callback: (data: { roomId: string; messageId: string }) => void,
+  ) {
     this.socket?.on("message_deleted", callback);
     return () => {
       this.socket?.off("message_deleted", callback);
@@ -99,21 +110,29 @@ class SocketService {
   }
 
   sendTyping(roomId: string, user: { userId: string; name: string }) {
-    this.socket?.emit("typing", { roomId, userId: user.userId, name: user.name });
+    this.socket?.emit("typing", {
+      roomId,
+      userId: user.userId,
+      name: user.name,
+    });
   }
 
   sendStopTyping(roomId: string, userId: string) {
     this.socket?.emit("stop_typing", { roomId, userId });
   }
 
-  onUserTyping(callback: (data: { roomId: string; userId: string; name: string }) => void) {
+  onUserTyping(
+    callback: (data: { roomId: string; userId: string; name: string }) => void,
+  ) {
     this.socket?.on("user_typing", callback);
     return () => {
       this.socket?.off("user_typing", callback);
     };
   }
 
-  onUserStopTyping(callback: (data: { roomId: string; userId: string }) => void) {
+  onUserStopTyping(
+    callback: (data: { roomId: string; userId: string }) => void,
+  ) {
     this.socket?.on("user_stop_typing", callback);
     return () => {
       this.socket?.off("user_stop_typing", callback);
@@ -124,14 +143,27 @@ class SocketService {
     this.socket?.emit("read_message", { roomId, messageId, userId });
   }
 
-  onMessageReadUpdated(callback: (data: { roomId: string; messageId: string; readBy: string[] }) => void) {
+  onMessageReadUpdated(
+    callback: (data: {
+      roomId: string;
+      messageId: string;
+      readBy: string[];
+    }) => void,
+  ) {
     this.socket?.on("message_read_updated", callback);
     return () => {
       this.socket?.off("message_read_updated", callback);
     };
   }
 
-  onUserStatusChanged(callback: (data: { userId: string; username?: string; online: boolean; lastSeen?: string }) => void) {
+  onUserStatusChanged(
+    callback: (data: {
+      userId: string;
+      username?: string;
+      online: boolean;
+      lastSeen?: string;
+    }) => void,
+  ) {
     this.socket?.on("user_status_changed", callback);
     return () => {
       this.socket?.off("user_status_changed", callback);
@@ -344,6 +376,34 @@ class SocketService {
     this.socket?.on("update_family_info", callback);
     return () => {
       this.socket?.off("update_family_info", callback);
+    };
+  }
+
+  // Chat Rooms Realtime
+  onNewRoom(callback: (room: any) => void) {
+    this.socket?.on("new_room", callback);
+    return () => {
+      this.socket?.off("new_room", callback);
+    };
+  }
+  onUpdateRoom(callback: (room: any) => void) {
+    this.socket?.on("update_room", callback);
+    return () => {
+      this.socket?.off("update_room", callback);
+    };
+  }
+  onDeleteRoom(callback: (data: { roomId: string }) => void) {
+    this.socket?.on("delete_room", callback);
+    return () => {
+      this.socket?.off("delete_room", callback);
+    };
+  }
+
+  // Notifications Realtime
+  onNewNotification(callback: (notification: any) => void) {
+    this.socket?.on("new_notification", callback);
+    return () => {
+      this.socket?.off("new_notification", callback);
     };
   }
 

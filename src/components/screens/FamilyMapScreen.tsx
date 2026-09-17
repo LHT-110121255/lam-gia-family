@@ -9,6 +9,7 @@ import { LocationInput } from "../common/LocationInput";
 import { LocationPickerModal } from "../common/LocationPickerModal";
 import { BottomSheet } from "../common/BottomSheet";
 import { Avatar } from "../common/Avatar";
+import { confirmModal, toast } from "../../utils/alerts";
 import {
   MapPin,
   Search,
@@ -493,11 +494,18 @@ export const FamilyMapScreen: React.FC<FamilyMapScreenProps> = ({
 
   // Handle Delete Place
   const handleDeletePlace = (placeId: string) => {
-    if (window.confirm("Bạn có chắc muốn xoá địa điểm này khỏi bản đồ?")) {
-      familyService.deletePlace(placeId);
-      setPlaces(familyService.getPlaces());
-      setSelectedPlace(null);
-    }
+    confirmModal({
+      title: "Xóa địa điểm",
+      message: "Bạn có chắc chắn muốn xoá địa điểm này khỏi bản đồ gia đình?",
+      confirmText: "Xóa địa điểm",
+      type: "danger",
+      onConfirm: () => {
+        familyService.deletePlace(placeId);
+        setPlaces(familyService.getPlaces());
+        setSelectedPlace(null);
+        toast.success("Đã xóa địa điểm khỏi bản đồ gia đình");
+      },
+    });
   };
 
   return (

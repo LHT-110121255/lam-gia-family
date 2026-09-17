@@ -9,6 +9,13 @@ const messageSchema = new mongoose.Schema(
     text: String,
     mediaUrl: String,
     isPriorityPing: { type: Boolean, default: false }, // Tin khẩn cấp
+    isPinned: { type: Boolean, default: false },
+    reactions: [
+      {
+        emoji: String,
+        memberId: String,
+      },
+    ],
     readBy: [{ type: String }],
   },
   { timestamps: true }

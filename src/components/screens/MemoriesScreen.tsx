@@ -8,6 +8,7 @@ import {
 } from "../../types";
 import { Avatar } from "../common/Avatar";
 import { ImageWithFallback } from "../common/ImageWithFallback";
+import { confirmModal } from "../../utils/alerts";
 import {
   Heart,
   MessageCircle,
@@ -540,13 +541,13 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
                                       {onDeleteComment && (
                                         <button
                                           onClick={() => {
-                                            if (
-                                              window.confirm(
-                                                "Bạn có chắc muốn xóa bình luận này?",
-                                              )
-                                            ) {
-                                              onDeleteComment(post.id, c.id);
-                                            }
+                                            confirmModal({
+                                              title: "Xóa bình luận",
+                                              message: "Bạn có chắc chắn muốn xóa bình luận này?",
+                                              confirmText: "Xóa",
+                                              type: "danger",
+                                              onConfirm: () => onDeleteComment(post.id, c.id),
+                                            });
                                           }}
                                           title="Xóa bình luận"
                                           className="p-0.5 text-stone-400 hover:text-rose-600 rounded-md transition"
@@ -689,13 +690,13 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (
-                                window.confirm(
-                                  `Bạn có chắc muốn xóa mốc sự kiện "${milestone.title}"?`,
-                                )
-                              ) {
-                                onDeleteMilestone(milestone.id);
-                              }
+                              confirmModal({
+                                title: "Xóa mốc sự kiện",
+                                message: `Bạn có chắc chắn muốn xóa mốc sự kiện "${milestone.title}"?`,
+                                confirmText: "Xóa sự kiện",
+                                type: "danger",
+                                onConfirm: () => onDeleteMilestone(milestone.id),
+                              });
                             }}
                             title="Xóa sự kiện"
                             className="p-1 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
@@ -818,13 +819,13 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (
-                            window.confirm(
-                              `Bạn có chắc muốn xóa album "${album.title}"?`,
-                            )
-                          ) {
-                            onDeleteAlbum(album.id);
-                          }
+                          confirmModal({
+                            title: "Xóa album ảnh",
+                            message: `Bạn có chắc chắn muốn xóa album "${album.title}"?`,
+                            confirmText: "Xóa album",
+                            type: "danger",
+                            onConfirm: () => onDeleteAlbum(album.id),
+                          });
                         }}
                         title="Xóa album"
                         className="absolute top-2 left-2 p-1.5 bg-stone-900/60 hover:bg-rose-600 text-white rounded-full backdrop-blur-xs transition"
@@ -882,7 +883,7 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
                       setIsUploadingPhotoToAlbum(true);
                       try {
                         const uploadPromises = Array.from(files).map((file) =>
-                          api.uploadFile(file),
+                          api.uploadFile(file as File),
                         );
                         const urls = await Promise.all(uploadPromises);
                         urls.forEach((url) => {
@@ -926,15 +927,17 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
                 {onDeleteAlbum && (
                   <button
                     onClick={() => {
-                      if (
-                        window.confirm(
-                          `Bạn có chắc muốn xóa toàn bộ album "${selectedAlbum.title}"?`,
-                        )
-                      ) {
-                        const id = selectedAlbum.id;
-                        setSelectedAlbum(null);
-                        onDeleteAlbum(id);
-                      }
+                      confirmModal({
+                        title: "Xóa toàn bộ album",
+                        message: `Bạn có chắc chắn muốn xóa toàn bộ album "${selectedAlbum.title}"? Tất cả ảnh bên trong sẽ bị gỡ bỏ.`,
+                        confirmText: "Xóa Album",
+                        type: "danger",
+                        onConfirm: () => {
+                          const id = selectedAlbum.id;
+                          setSelectedAlbum(null);
+                          onDeleteAlbum(id);
+                        },
+                      });
                     }}
                     className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-lg text-[11px] flex items-center gap-1 transition"
                   >
@@ -962,13 +965,15 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
                     />
                     {onDeletePhotoFromAlbum && (
                       <button
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation();
-                          if (
-                            window.confirm(
-                              "Bạn có chắc muốn xóa ảnh này khỏi album?",
-                            )
-                          ) {
+                          const ok = await confirmModal({
+                            title: "Xóa ảnh",
+                            message: "Bạn có chắc chắn muốn xóa ảnh này khỏi album?",
+                            confirmText: "Xóa ảnh",
+                            type: "danger",
+                          });
+                          if (ok) {
                             onDeletePhotoFromAlbum(selectedAlbum.id, photo.id);
                             setSelectedAlbum((prev) =>
                               prev
@@ -1270,7 +1275,7 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
                     setIsUploadingMilestonePhoto(true);
                     try {
                       const uploadPromises = Array.from(files).map((file) =>
-                        api.uploadFile(file),
+                        api.uploadFile(file as File),
                       );
                       const urls = await Promise.all(uploadPromises);
                       setNewMilestonePhotos((prev) => [...prev, ...urls]);

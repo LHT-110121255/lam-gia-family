@@ -33,6 +33,7 @@ import { Modal } from "../common/Modal";
 import { api } from "../../services/api";
 import { familyService } from "../../services/familyService";
 import { socketService } from "../../services/socket";
+import { confirmModal, toast } from "../../utils/alerts";
 
 interface ChatScreenProps {
   rooms: ChatRoom[];
@@ -1245,15 +1246,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               Kho tài nguyên đã chia sẻ (Ảnh & Liên kết)
             </span>
             {(() => {
-              const sharedMedia = messages.reduce<string[]>((acc, m) => {
+              const sharedMedia = (messages || []).reduce((acc: string[], m) => {
                 if (m.mediaUrl) acc.push(m.mediaUrl);
                 if (m.mediaUrls) acc.push(...m.mediaUrls);
                 return acc;
               }, []);
 
-              const sharedLinks = messages.reduce<
-                { url: string; text: string }[]
-              >((acc, m) => {
+              const sharedLinks = (messages || []).reduce((acc: { url: string; text: string }[], m) => {
                 if (m.text) {
                   const matches = m.text.match(/(https?:\/\/[^\s]+)/g);
                   if (matches) {
@@ -1310,15 +1309,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             <div className="pt-2 border-t border-stone-100">
               <button
                 type="button"
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      `Bạn có chắc chắn muốn xóa phòng chat "${activeRoom.name}"?`,
-                    )
-                  ) {
+                onClick={async () => {
+                  const confirmed = await confirmModal({
+                    title: "Giải tán phòng chat?",
+                    message: `Bạn có chắc chắn muốn xóa phòng chat "${activeRoom.name}"? Toàn bộ lịch sử trò chuyện trong phòng này sẽ bị xóa.`,
+                    confirmText: "Xóa phòng",
+                    type: "danger",
+                  });
+                  if (confirmed) {
                     onDeleteRoom(activeRoom.id);
                     setShowRoomSettingsSheet(false);
                     setViewMode("list");
+                    toast.success("Đã xóa phòng chat thành công");
                   }
                 }}
                 className="w-full py-2.5 px-3 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 font-bold rounded-xl text-xs transition flex items-center justify-center gap-2"

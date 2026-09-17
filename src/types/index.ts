@@ -43,6 +43,8 @@ export interface FamilyInfo {
   elderCareNotes?: string;
   contactPhone?: string;
   ancestralHome?: string;
+  customFinanceCategories?: string[];
+  customPlaceCategories?: string[];
 }
 
 export interface PostComment {
@@ -332,6 +334,8 @@ export interface AppNotification {
   body?: string;
   time?: string;
   timestamp?: string;
+  senderName?: string;
+  senderAvatar?: string;
   read: boolean;
   targetTab?: string;
   targetSubId?: string;

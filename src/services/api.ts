@@ -866,4 +866,14 @@ export const api = {
       return null;
     }
   },
+
+  // 34. On This Day API
+  async getOnThisDay(): Promise<any> {
+    try {
+      const response = await authFetch('/on-this-day');
+      return await handleApiResponse(response);
+    } catch {
+      return null;
+    }
+  },
 };

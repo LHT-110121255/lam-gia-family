@@ -156,6 +156,44 @@ class SocketService {
     };
   }
 
+  sendReaction(roomId: string, messageId: string, emoji: string, memberId: string) {
+    this.socket?.emit("message_reaction", { roomId, messageId, emoji, memberId });
+  }
+
+  onMessageReactionUpdated(
+    callback: (data: {
+      roomId: string;
+      messageId: string;
+      reactions: Array<{ emoji: string; memberId: string }>;
+    }) => void,
+  ) {
+    this.socket?.on("message_reaction_updated", callback);
+    return () => {
+      this.socket?.off("message_reaction_updated", callback);
+    };
+  }
+
+  sendPinMessage(roomId: string, messageId: string, text: string) {
+    this.socket?.emit("pin_message", { roomId, messageId, text });
+  }
+
+  sendUnpinMessage(roomId: string) {
+    this.socket?.emit("unpin_message", { roomId });
+  }
+
+  onRoomPinnedMessage(
+    callback: (data: {
+      roomId: string;
+      pinnedMessageId?: string | null;
+      pinnedMessageText?: string | null;
+    }) => void,
+  ) {
+    this.socket?.on("room_pinned_message", callback);
+    return () => {
+      this.socket?.off("room_pinned_message", callback);
+    };
+  }
+
   onUserStatusChanged(
     callback: (data: {
       userId: string;

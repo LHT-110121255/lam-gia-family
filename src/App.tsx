@@ -14,6 +14,8 @@ import { OfflineIndicator } from './components/common/OfflineIndicator';
 import { QuickActionSheet } from './components/common/QuickActionSheet';
 import { CreatePostSheet } from './components/common/CreatePostSheet';
 import { Toast, ToastMessage } from './components/common/Toast';
+import { ConfirmDialog, ConfirmDialogOptions } from './components/common/ConfirmDialog';
+import { SOSAlertModal, SOSAlertData } from './components/common/SOSAlertModal';
 
 // Screens
 import { HomeScreen } from './components/screens/HomeScreen';
@@ -33,7 +35,7 @@ import { ProfileManagementScreen } from './components/profile/ProfileManagementS
 import { AccountManagementScreen } from './components/screens/AccountManagementScreen';
 import { FloatingChatBubble } from './components/chat/FloatingChatBubble';
 
-import { CalendarEvent, ChatMessage, FinanceTransaction, SharedTaskList, FamilyMember } from './types';
+import { CalendarEvent, ChatMessage, FinanceTransaction, SharedTaskList, FamilyMember, FamilyPost, ChatRoom, PostPrivacy } from './types';
 import { ChevronLeft } from 'lucide-react';
 
 const MAIN_TABS: MainTab[] = ['home', 'map', 'chat', 'more'];
@@ -44,15 +46,7 @@ export default function App() {
 
   useEffect(() => {
     familyService.requestNotificationPermission();
-    familyService.syncMembersFromBackend();
-    familyService.syncPostsFromBackend();
-    familyService.syncEventsFromBackend();
-    familyService.syncChecklistsFromBackend();
-    familyService.syncPollsFromBackend();
-    familyService.syncFinanceFromBackend();
-    familyService.syncAlbumsFromBackend();
-    familyService.syncMilestonesFromBackend();
-    familyService.syncPlacesFromBackend();
+    familyService.syncAllInitialData();
     familyService.initChatSocket();
     locationSyncService.init();
     const unsubscribe = familyService.subscribe(() => {
@@ -92,20 +86,63 @@ export default function App() {
   const [openedDirectEvent, setOpenedDirectEvent] = useState<CalendarEvent | null>(null);
   const [selectedMemberProfileId, setSelectedMemberProfileId] = useState<string | null>(null);
 
-  // --- TOAST SYSTEM ---
+  // --- RICH TOAST & ALERT SYSTEM ---
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [confirmOptions, setConfirmOptions] = useState<ConfirmDialogOptions | null>(null);
+  const [sosAlertData, setSOSAlertData] = useState<SOSAlertData | null>(null);
 
-  const addToast = useCallback((text: string, type: 'success' | 'error' | 'info' = 'success') => {
-    const id = 'toast-' + Date.now();
-    setToasts((prev) => [...prev, { id, text, type }]);
+  const addToast = useCallback((input: string | Omit<ToastMessage, 'id'>, defaultType: ToastMessage['type'] = 'success') => {
+    const id = 'toast-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+    const toastObj: ToastMessage =
+      typeof input === 'string'
+        ? { id, text: input, type: defaultType }
+        : { id, type: input.type || defaultType, ...input };
+
+    setToasts((prev) => [...prev, toastObj]);
+    const duration = toastObj.duration || (toastObj.type === 'sos' ? 8000 : 4000);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3500);
+    }, duration);
   }, []);
 
   const dismissToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
+
+  useEffect(() => {
+    const handleToastEvent = (e: any) => {
+      if (e.detail) {
+        const toastItem: ToastMessage = e.detail;
+        setToasts((prev) => [...prev, toastItem]);
+        const duration = toastItem.duration || (toastItem.type === 'sos' ? 8000 : 4000);
+        setTimeout(() => {
+          setToasts((prev) => prev.filter((t) => t.id !== toastItem.id));
+        }, duration);
+      }
+    };
+
+    const handleConfirmEvent = (e: any) => {
+      if (e.detail) {
+        setConfirmOptions(e.detail);
+      }
+    };
+
+    const handleSOSEvent = (e: any) => {
+      if (e.detail) {
+        setSOSAlertData(e.detail);
+      }
+    };
+
+    window.addEventListener('family_toast_show', handleToastEvent);
+    window.addEventListener('family_confirm_show', handleConfirmEvent);
+    window.addEventListener('family_sos_modal_show', handleSOSEvent);
+
+    return () => {
+      window.removeEventListener('family_toast_show', handleToastEvent);
+      window.removeEventListener('family_confirm_show', handleConfirmEvent);
+      window.removeEventListener('family_sos_modal_show', handleSOSEvent);
+    };
+  }, []);
 
   // Switch Tab with Direction Detection
   const handleTabChange = useCallback((newTab: MainTab) => {
@@ -904,6 +941,24 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* Global Beautiful Confirmation Dialog */}
+        <ConfirmDialog
+          isOpen={!!confirmOptions}
+          options={confirmOptions}
+          onClose={() => setConfirmOptions(null)}
+        />
+
+        {/* Global Striking SOS Emergency Modal */}
+        <SOSAlertModal
+          isOpen={!!sosAlertData}
+          alertData={sosAlertData}
+          onClose={() => setSOSAlertData(null)}
+          onOpenMap={() => {
+            handleTabChange('map');
+            setSubScreen('hub');
+          }}
+        />
       </div>
     </div>
   );

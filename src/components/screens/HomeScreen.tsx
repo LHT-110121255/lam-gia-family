@@ -10,6 +10,7 @@ import {
 import { Avatar } from '../common/Avatar';
 import { ImageWithFallback } from '../common/ImageWithFallback';
 import { PostSkeleton } from '../common/PostSkeleton';
+import { confirmModal } from '../../utils/alerts';
 import {
   Calendar,
   Gift,
@@ -35,7 +36,7 @@ interface HomeScreenProps {
   events: CalendarEvent[];
   tasks: SharedTaskList[];
   posts: FamilyPost[];
-  onThisDay: OnThisDayItem;
+  onThisDay?: OnThisDayItem | null;
   onNavigateTab: (tab: 'family' | 'memories' | 'calendar' | 'more') => void;
   onOpenMemberProfile: (memberId: string) => void;
   onOpenEventDetail: (event: CalendarEvent) => void;
@@ -464,9 +465,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                         {onDeletePost && (
                           <button
                             onClick={() => {
-                              if (window.confirm('Bạn có chắc muốn xóa bài đăng này?')) {
-                                onDeletePost(post.id);
-                              }
+                              confirmModal({
+                                title: 'Xóa bài viết',
+                                message: 'Bạn có chắc chắn muốn xóa bài đăng này khỏi bảng tin gia đình?',
+                                confirmText: 'Xóa bài viết',
+                                type: 'danger',
+                                onConfirm: () => onDeletePost(post.id),
+                              });
                             }}
                             className="p-1.5 text-stone-400 hover:text-red-600 rounded-xl hover:bg-stone-100 transition"
                             title="Xóa bài viết"

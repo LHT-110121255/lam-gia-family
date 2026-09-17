@@ -1949,6 +1949,92 @@ app.put("/api/family-info", async (req, res) => {
 });
 
 // ==========================================
+// 17. ON THIS DAY (NGÀY NÀY NĂM XƯA) API
+// ==========================================
+app.get("/api/on-this-day", async (req, res) => {
+  try {
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1;
+    const currentDay = today.getDate();
+    const currentYear = today.getFullYear();
+
+    // 1. Tìm trong Posts có ảnh hoặc nội dung trùng ngày tháng các năm trước
+    const allPosts = await Post.find().sort({ createdAt: -1 });
+    for (const p of allPosts) {
+      if (!p.createdAt) continue;
+      const pDate = new Date(p.createdAt);
+      if (
+        pDate.getFullYear() < currentYear &&
+        pDate.getMonth() + 1 === currentMonth &&
+        pDate.getDate() === currentDay
+      ) {
+        return res.json({
+          id: `otd-post-${p._id}`,
+          yearsAgo: currentYear - pDate.getFullYear(),
+          originalDate: p.createdAt.toISOString().split("T")[0],
+          title: p.content ? p.content.substring(0, 50) : "Khoảnh khắc gia đình năm xưa",
+          location: p.location || "",
+          description: p.content || "",
+          photos: p.mediaUrls || [],
+          taggedMemberIds: p.authorId ? [p.authorId] : [],
+        });
+      }
+    }
+
+    // 2. Tìm trong Milestones
+    const allMilestones = await Milestone.find().sort({ year: -1, date: -1 });
+    for (const m of allMilestones) {
+      let mMonth = 0;
+      let mDay = 0;
+      let mYear = m.year;
+
+      if (m.date) {
+        const parts = m.date.split("-");
+        if (parts.length === 3) {
+          mYear = parseInt(parts[0]);
+          mMonth = parseInt(parts[1]);
+          mDay = parseInt(parts[2]);
+        }
+      }
+
+      if (mYear && mYear < currentYear && mMonth === currentMonth && mDay === currentDay) {
+        return res.json({
+          id: `otd-mile-${m._id}`,
+          yearsAgo: currentYear - mYear,
+          originalDate: m.date || `${mYear}-${String(currentMonth).padStart(2, "0")}-${String(currentDay).padStart(2, "0")}`,
+          title: m.title || "Kỷ niệm ngày này năm xưa",
+          location: m.location || "",
+          description: m.description || "",
+          photos: m.photos || (m.coverUrl ? [m.coverUrl] : []),
+          taggedMemberIds: m.taggedMemberIds || [],
+        });
+      }
+    }
+
+    // 3. Fallback: Nếu không có bài nào đúng ngày hôm nay của năm cũ, lấy kỷ niệm nổi bật gần nhất
+    for (const m of allMilestones) {
+      if (m.year && m.year < currentYear && (m.photos?.length > 0 || m.coverUrl)) {
+        return res.json({
+          id: `otd-mile-${m._id}`,
+          yearsAgo: currentYear - m.year,
+          originalDate: m.date || `${m.year}-01-01`,
+          title: m.title || "Kỷ niệm đáng nhớ gia đình",
+          location: m.location || "",
+          description: m.description || "",
+          photos: m.photos || (m.coverUrl ? [m.coverUrl] : []),
+          taggedMemberIds: m.taggedMemberIds || [],
+        });
+      }
+    }
+
+    return res.json(null);
+  } catch (err) {
+    console.error("On this day error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
 // Map to track active connected users: userId -> socketId
 const connectedUserSockets = new Map();
 
@@ -2061,6 +2147,76 @@ io.on("connection", (socket) => {
       io.to(roomId || "room-all").emit("message_deleted", { roomId, messageId });
     } catch (err) {
       console.error("Socket delete_message error:", err);
+    }
+  });
+
+  socket.on("message_reaction", async (data) => {
+    try {
+      const { roomId, messageId, emoji, memberId } = data;
+      if (!messageId || !emoji || !memberId) return;
+
+      if (mongoose.Types.ObjectId.isValid(messageId)) {
+        const msg = await Message.findById(messageId);
+        if (msg) {
+          const existingIdx = (msg.reactions || []).findIndex(
+            (r) => r.emoji === emoji && r.memberId === memberId
+          );
+          if (existingIdx >= 0) {
+            msg.reactions.splice(existingIdx, 1);
+          } else {
+            if (!msg.reactions) msg.reactions = [];
+            msg.reactions.push({ emoji, memberId });
+          }
+          await msg.save();
+          io.to(roomId || "room-all").emit("message_reaction_updated", {
+            roomId: roomId || "room-all",
+            messageId,
+            reactions: msg.reactions,
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Socket message_reaction error:", err);
+    }
+  });
+
+  socket.on("pin_message", async (data) => {
+    try {
+      const { roomId, messageId, text } = data;
+      if (!roomId) return;
+      if (mongoose.Types.ObjectId.isValid(roomId)) {
+        await Room.findByIdAndUpdate(roomId, {
+          pinnedMessageId: messageId,
+          pinnedMessageText: text,
+        });
+      }
+      io.to(roomId || "room-all").emit("room_pinned_message", {
+        roomId: roomId || "room-all",
+        pinnedMessageId: messageId,
+        pinnedMessageText: text,
+      });
+    } catch (err) {
+      console.error("Socket pin_message error:", err);
+    }
+  });
+
+  socket.on("unpin_message", async (data) => {
+    try {
+      const { roomId } = data;
+      if (!roomId) return;
+      if (mongoose.Types.ObjectId.isValid(roomId)) {
+        await Room.findByIdAndUpdate(roomId, {
+          pinnedMessageId: "",
+          pinnedMessageText: "",
+        });
+      }
+      io.to(roomId || "room-all").emit("room_pinned_message", {
+        roomId: roomId || "room-all",
+        pinnedMessageId: null,
+        pinnedMessageText: null,
+      });
+    } catch (err) {
+      console.error("Socket unpin_message error:", err);
     }
   });
 

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { BottomSheet } from '../common/BottomSheet';
 import { LocationInput } from '../common/LocationInput';
+import { confirmModal, toast } from '../../utils/alerts';
 
 interface CalendarScreenProps {
   events: CalendarEvent[];
@@ -388,10 +389,19 @@ export const CalendarScreen: React.FC<CalendarScreenProps> = ({
                 </h3>
               </div>
               <button
-                onClick={() => {
-                  onDeleteEvent(selectedEvent.id);
-                  setSelectedEvent(null);
-                  if (onCloseEventDetailDirect) onCloseEventDetailDirect();
+                onClick={async () => {
+                  const confirmed = await confirmModal({
+                    title: 'Xóa sự kiện?',
+                    message: `Bạn có chắc muốn xóa sự kiện "${selectedEvent.title}" khỏi lịch gia đình?`,
+                    confirmText: 'Xóa sự kiện',
+                    type: 'danger',
+                  });
+                  if (confirmed) {
+                    onDeleteEvent(selectedEvent.id);
+                    setSelectedEvent(null);
+                    if (onCloseEventDetailDirect) onCloseEventDetailDirect();
+                    toast.success('Đã xóa sự kiện thành công');
+                  }
                 }}
                 className="p-2 text-stone-400 hover:text-red-600 rounded-lg"
                 title="Xoá sự kiện"

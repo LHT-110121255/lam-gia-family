@@ -18,6 +18,7 @@ import {
   FinanceTransaction,
   SplitBill,
   FamilyPlace,
+  AlbumPhoto,
 } from '../types';
 
 import {
@@ -64,6 +65,7 @@ type Listener = () => void;
 class FamilyService {
   private listeners: Set<Listener> = new Set();
   private initialized = false;
+  private storageStatsCache: { data: any; timestamp: number } | null = null;
 
   constructor() {
     this.checkAppVersion();
@@ -359,7 +361,9 @@ class FamilyService {
     // 10. Lắng nghe Tin Nhắn Realtime (Chat Messages)
     socketService.onReceiveMessage((msg) => {
       if (!msg) return;
-      const messages = this.getMessages();
+      const roomId = msg.roomId || 'room-all';
+      const all = load<Record<string, ChatMessage[]>>('chatMessages', INITIAL_MESSAGES);
+      const messages = all[roomId] || [];
       const id = msg._id || msg.id;
 
       const tempId = msg.clientTempId;
@@ -377,10 +381,10 @@ class FamilyService {
         updatedMessages = [...messages, { ...msg, id }];
       }
 
-      save('messages', updatedMessages);
+      all[roomId] = updatedMessages;
+      save('chatMessages', all);
 
       const rooms = this.getChatRooms();
-      const roomId = msg.roomId || 'room-all';
       const rIdx = rooms.findIndex((r) => r.id === roomId);
       if (rIdx >= 0) {
         rooms[rIdx] = {
@@ -396,20 +400,28 @@ class FamilyService {
 
     socketService.onMessageDeleted(({ roomId, messageId }) => {
       if (!messageId) return;
-      const messages = this.getMessages().map((m) =>
-        m.id === messageId ? { ...m, isDeleted: true, text: 'Tin nhắn đã được thu hồi' } : m
-      );
-      save('messages', messages);
-      this.notify();
+      const rId = roomId || 'room-all';
+      const all = load<Record<string, ChatMessage[]>>('chatMessages', INITIAL_MESSAGES);
+      if (all[rId]) {
+        all[rId] = all[rId].map((m) =>
+          m.id === messageId ? { ...m, isDeleted: true, text: 'Tin nhắn đã được thu hồi' } : m
+        );
+        save('chatMessages', all);
+        this.notify();
+      }
     });
 
     socketService.onMessageReadUpdated(({ roomId, messageId, readBy }) => {
       if (!messageId || !readBy) return;
-      const messages = this.getMessages().map((m) =>
-        m.id === messageId ? { ...m, readBy } : m
-      );
-      save('messages', messages);
-      this.notify();
+      const rId = roomId || 'room-all';
+      const all = load<Record<string, ChatMessage[]>>('chatMessages', INITIAL_MESSAGES);
+      if (all[rId]) {
+        all[rId] = all[rId].map((m) =>
+          m.id === messageId ? { ...m, readBy } : m
+        );
+        save('chatMessages', all);
+        this.notify();
+      }
     });
 
     // 11. Lắng nghe Phòng Chat Realtime (Rooms Realtime)
@@ -468,7 +480,44 @@ class FamilyService {
       }
     });
 
-    // 12. Lắng nghe Thông báo gia đình Realtime (In-App Notifications)
+    // 12. Lắng nghe Cảm xúc tin nhắn (Reactions) & Ghim tin nhắn (Pinned message)
+    socketService.onMessageReactionUpdated(({ roomId, messageId, reactions }) => {
+      if (!roomId || !messageId) return;
+      const all = load<Record<string, ChatMessage[]>>('chatMessages', INITIAL_MESSAGES);
+      const roomMsgs = all[roomId] || [];
+      const updated = roomMsgs.map((m) => (m.id === messageId ? { ...m, reactions: reactions || [] } : m));
+      all[roomId] = updated;
+      save('chatMessages', all);
+      this.notify();
+    });
+
+    socketService.onRoomPinnedMessage(({ roomId, pinnedMessageId, pinnedMessageText }) => {
+      if (!roomId) return;
+      const rooms = this.getChatRooms().map((r) => {
+        if (r.id !== roomId) return r;
+        return {
+          ...r,
+          pinnedMessageId: pinnedMessageId || undefined,
+          pinnedMessageText: pinnedMessageText || undefined,
+        };
+      });
+      save('chatRooms', rooms);
+      this.notify();
+    });
+
+    // 13. Lắng nghe Cảnh báo Khẩn cấp (SOS Alert)
+    socketService.onSOSAlert((alert) => {
+      if (!alert) return;
+      this.createNotification({
+        title: '🚨 CẢNH BÁO SOS KHẨN CẤP!',
+        content: `${alert.userName || 'Thành viên gia đình'} vừa kích hoạt nút SOS khẩn cấp!`,
+        type: 'sos',
+        category: 'sos',
+        targetTab: 'map',
+      });
+    });
+
+    // 14. Lắng nghe Thông báo gia đình Realtime (In-App Notifications)
     socketService.onNewNotification((notif) => {
       if (!notif) return;
       const notifications = this.getNotifications();
@@ -502,7 +551,7 @@ class FamilyService {
       }
     });
 
-    // 9. Lắng nghe thay đổi storage từ các tab khác trong cùng trình duyệt
+    // 15. Lắng nghe thay đổi storage từ các tab khác trong cùng trình duyệt
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', (e) => {
         if (e.key?.startsWith(STORAGE_PREFIX)) {
@@ -511,19 +560,361 @@ class FamilyService {
       });
     }
 
-    // 10. Khởi chạy đồng bộ tất cả dữ liệu từ Backend
-    this.syncUsersFromBackend();
-    this.syncRoomsFromBackend();
-    this.syncPostsFromBackend();
-    this.syncPlacesFromBackend();
-    this.syncEventsFromBackend();
-    this.syncChecklistsFromBackend();
-    this.syncFinanceFromBackend();
-    this.syncAlbumsFromBackend();
-    this.syncMilestonesFromBackend();
-    this.syncPollsFromBackend();
-    this.syncFamilyInfoFromBackend();
-    this.syncNotificationsFromBackend();
+    // 16. Khởi chạy đồng bộ toàn bộ dữ liệu từ Backend theo mẻ (Single Batch)
+    this.syncAllInitialData();
+  }
+
+  public async syncAllInitialData(): Promise<void> {
+    try {
+      const { api, tokenStorage } = await import('./api');
+      const currentMember = this.getCurrentMember();
+      const user = tokenStorage.getUser();
+      const userId = user?._id || user?.id || currentMember?.id;
+
+      const results = await Promise.allSettled([
+        api.getFamilyInfo(),
+        api.getAdminUsers(),
+        api.getRooms(),
+        api.getPosts(),
+        api.getPlaces(),
+        api.getEvents(),
+        api.getChecklists(),
+        api.getTransactions(),
+        api.getSplitBills(),
+        api.getAlbums(),
+        api.getMilestones(),
+        api.getPolls(),
+        api.getNotifications(userId),
+        api.getOnThisDay(),
+      ]);
+
+      const [
+        resFamilyInfo,
+        resUsers,
+        resRooms,
+        resPosts,
+        resPlaces,
+        resEvents,
+        resChecklists,
+        resTxs,
+        resBills,
+        resAlbums,
+        resMilestones,
+        resPolls,
+        resNotifs,
+        resOtd,
+      ] = results;
+
+      // 1. Family Info
+      if (resFamilyInfo.status === 'fulfilled' && resFamilyInfo.value?.name) {
+        save('info', { ...this.getFamilyInfo(), ...resFamilyInfo.value });
+      }
+
+      // 2. Users / Members
+      if (resUsers.status === 'fulfilled' && Array.isArray(resUsers.value) && resUsers.value.length > 0) {
+        const localMembers = this.getAllMembers();
+        const remoteMap = new Map();
+        resUsers.value.forEach((u: any) => {
+          const mapped: FamilyMember = {
+            id: u._id || u.id,
+            username: u.username,
+            name: u.name,
+            relationship: u.relationship || 'Thành viên',
+            role: u.role || 'adult',
+            generation: u.generation || 2,
+            avatar: u.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300',
+            birthDate: u.birthDate || '',
+            phone: u.phone || '',
+            email: u.email || '',
+            onlineStatus: 'online',
+            jobTitle: u.jobTitle || '',
+            locationAddress: u.location?.address || u.address || '',
+            latitude: u.location?.latitude || u.latitude,
+            longitude: u.location?.longitude || u.longitude,
+            approvalStatus: u.approvalStatus || (u.isAdmin ? 'approved' : 'pending'),
+            isAdmin: !!u.isAdmin || u.username === 'lamhuetrung',
+            isActive: u.isActive !== false,
+            createdAt: u.createdAt || new Date().toISOString(),
+          };
+          remoteMap.set(mapped.id, mapped);
+          if (u.username) remoteMap.set(u.username, mapped);
+        });
+
+        const merged: FamilyMember[] = [...localMembers];
+        remoteMap.forEach((rMember) => {
+          const idx = merged.findIndex((m) => m.id === rMember.id || (m.username && m.username === rMember.username));
+          if (idx >= 0) {
+            merged[idx] = {
+              ...merged[idx],
+              ...rMember,
+              id: merged[idx].id,
+              avatar: rMember.avatar && !rMember.avatar.includes('photo-1535713875002') ? rMember.avatar : (merged[idx].avatar || rMember.avatar),
+              name: rMember.name || merged[idx].name,
+              latitude: merged[idx].latitude || rMember.latitude,
+              longitude: merged[idx].longitude || rMember.longitude,
+              locationAddress: merged[idx].locationAddress || rMember.locationAddress,
+            };
+          } else {
+            merged.push(rMember);
+          }
+        });
+        save('members', merged);
+      }
+
+      // 3. Rooms
+      if (resRooms.status === 'fulfilled' && Array.isArray(resRooms.value) && resRooms.value.length > 0) {
+        const localRooms = this.getChatRooms();
+        const mappedRemote: ChatRoom[] = resRooms.value.map((r: any) => ({
+          id: r._id || r.id,
+          name: r.name,
+          type: r.type || 'custom',
+          memberIds: r.memberIds || [],
+          adminIds: [r.createdById || ''],
+          createdById: r.createdById || '',
+          avatar: r.avatar || '',
+          description: r.description || '',
+          unreadCount: 0,
+          pinnedMessageId: r.pinnedMessageId,
+          pinnedMessageText: r.pinnedMessageText,
+          lastMessage: r.lastMessage || 'Phòng trò chuyện',
+          lastMessageTime: r.lastMessageTime || 'Vừa xong',
+          createdAt: r.createdAt || new Date().toISOString(),
+        }));
+
+        const mergedRooms = [...localRooms];
+        mappedRemote.forEach((rem) => {
+          const idx = mergedRooms.findIndex((lr) => lr.id === rem.id);
+          if (idx >= 0) {
+            mergedRooms[idx] = { ...mergedRooms[idx], ...rem };
+          } else {
+            mergedRooms.push(rem);
+          }
+        });
+        save('chatRooms', mergedRooms);
+      }
+
+      // 4. Posts
+      if (resPosts.status === 'fulfilled' && Array.isArray(resPosts.value)) {
+        const remoteMapped: FamilyPost[] = resPosts.value.map((p: any) => ({
+          id: p._id || p.id,
+          authorId: p.authorId || 'member-trung',
+          authorName: p.authorName,
+          authorAvatar: p.authorAvatar,
+          content: p.content,
+          mediaUrls: p.mediaUrls || [],
+          createdAt: p.createdAt || new Date().toISOString(),
+          location: p.location,
+          feeling: p.feeling,
+          likes: Array.isArray(p.likes) ? p.likes : [],
+          comments: (p.comments || []).map((c: any) => ({
+            id: c._id || c.id || 'c-' + Math.random(),
+            authorId: c.authorId,
+            authorName: c.authorName,
+            authorAvatar: c.authorAvatar,
+            content: c.content,
+            createdAt: c.createdAt ? new Date(c.createdAt).toISOString() : new Date().toISOString(),
+          })),
+          pinned: p.pinned,
+          privacy: p.privacy,
+        }));
+        save('posts', remoteMapped);
+      }
+
+      // 5. Places
+      if (resPlaces.status === 'fulfilled' && Array.isArray(resPlaces.value)) {
+        const mappedPlaces: FamilyPlace[] = resPlaces.value.map((p: any) => ({
+          id: p._id || p.id,
+          name: p.name,
+          address: p.address,
+          latitude: p.latitude,
+          longitude: p.longitude,
+          category: p.category || 'Nhà riêng',
+          imageUrl: p.imageUrl,
+          notes: p.notes,
+          createdById: p.createdById,
+          createdByName: p.createdByName,
+          createdByAvatar: p.createdByAvatar,
+          createdAt: p.createdAt || new Date().toISOString(),
+        }));
+        save('places', mappedPlaces);
+      }
+
+      // 6. Events
+      if (resEvents.status === 'fulfilled' && Array.isArray(resEvents.value)) {
+        const mappedEvents: CalendarEvent[] = resEvents.value.map((e: any) => ({
+          id: e._id || e.id,
+          title: e.title,
+          type: e.type || 'other',
+          date: e.date,
+          lunarDateText: e.lunarDateText || '',
+          time: e.time || '',
+          location: e.location || '',
+          participantIds: e.participantIds || [],
+          reminderMinutes: e.reminderMinutes || 60,
+          note: e.note || '',
+          isLunarRecurring: e.isLunarRecurring || false,
+          isAnnualRecurring: e.isAnnualRecurring || false,
+          createdById: e.createdById,
+          createdByName: e.createdByName,
+          createdByAvatar: e.createdByAvatar,
+        }));
+        save('events', mappedEvents);
+      }
+
+      // 7. Checklists
+      if (resChecklists.status === 'fulfilled' && Array.isArray(resChecklists.value)) {
+        const mappedTasks: SharedTaskList[] = resChecklists.value.map((t: any) => ({
+          id: t._id || t.id,
+          title: t.title,
+          category: t.category || 'shopping',
+          createdById: t.createdById,
+          createdAt: t.createdAt || new Date().toISOString(),
+          items: (t.items || []).map((i: any) => ({
+            id: i._id || i.id,
+            title: i.title,
+            completed: !!i.completed,
+            completedBy: i.completedBy,
+            completedAt: i.completedAt,
+            quantity: i.quantity,
+          })),
+        }));
+        save('tasks', mappedTasks);
+      }
+
+      // 8. Finance (Txs & Bills)
+      let newTransactions: FinanceTransaction[] = [];
+      let newSplitBills: SplitBill[] = [];
+      if (resTxs.status === 'fulfilled' && Array.isArray(resTxs.value)) {
+        newTransactions = resTxs.value.map((t: any) => ({
+          id: t._id || t.id,
+          title: t.title,
+          type: t.type,
+          amount: t.amount,
+          category: t.category || 'Sinh hoạt',
+          memberId: t.memberId,
+          payerMemberId: t.payerMemberId,
+          date: t.date || new Date().toISOString().split('T')[0],
+          note: t.note,
+          description: t.description,
+          receiptUrl: t.receiptUrl,
+        }));
+      }
+      if (resBills.status === 'fulfilled' && Array.isArray(resBills.value)) {
+        newSplitBills = resBills.value.map((b: any) => ({
+          id: b._id || b.id,
+          title: b.title,
+          totalAmount: b.totalAmount,
+          date: b.date || new Date().toISOString().split('T')[0],
+          payerId: b.payerId,
+          createdBy: b.createdBy,
+          splits: (b.splits || []).map((s: any) => ({
+            memberId: s.memberId,
+            amount: s.amount,
+            paid: s.paid || false,
+            paidAt: s.paidAt,
+          })),
+        }));
+      }
+      let totalIn = 0;
+      let totalOut = 0;
+      newTransactions.forEach((t) => {
+        if (t.type === 'in') totalIn += t.amount;
+        else if (t.type === 'out') totalOut += t.amount;
+      });
+      const wallet = this.getWallet();
+      save('wallet', {
+        ...wallet,
+        transactions: newTransactions,
+        splitBills: newSplitBills,
+        totalIn,
+        totalOut,
+        balance: totalIn - totalOut,
+      });
+
+      // 9. Albums
+      if (resAlbums.status === 'fulfilled' && Array.isArray(resAlbums.value)) {
+        const mappedAlbums: MemoryAlbum[] = resAlbums.value.map((a: any) => ({
+          id: a._id || a.id,
+          title: a.title,
+          category: a.category || 'Kỷ niệm',
+          coverUrl: a.coverUrl || '',
+          photoCount: a.photoCount || a.photos?.length || 0,
+          photos: (a.photos || []).map((p: any) => ({
+            id: p._id || p.id,
+            url: p.url,
+            caption: p.caption,
+            date: p.date,
+            taggedMemberIds: p.taggedMemberIds || [],
+          })),
+        }));
+        save('albums', mappedAlbums);
+      }
+
+      // 10. Milestones
+      if (resMilestones.status === 'fulfilled' && Array.isArray(resMilestones.value)) {
+        const mappedMilestones: MemoryMilestone[] = resMilestones.value.map((m: any) => ({
+          id: m._id || m.id,
+          year: m.year,
+          date: m.date,
+          title: m.title,
+          location: m.location || '',
+          description: m.description || '',
+          coverUrl: m.coverUrl || '',
+          photos: m.photos || [],
+          taggedMemberIds: m.taggedMemberIds || [],
+          aiStorySummary: m.aiStorySummary,
+        }));
+        save('milestones', mappedMilestones);
+      }
+
+      // 11. Polls
+      if (resPolls.status === 'fulfilled' && Array.isArray(resPolls.value)) {
+        const mappedPolls: FamilyPoll[] = resPolls.value.map((p: any) => ({
+          id: p._id || p.id,
+          question: p.question,
+          createdById: p.createdById,
+          allowMultiple: !!p.allowMultiple,
+          closed: !!p.closed,
+          createdAt: p.createdAt || new Date().toISOString(),
+          options: (p.options || []).map((o: any) => ({
+            id: o._id || o.id,
+            text: o.text,
+            voterIds: o.voterIds || [],
+          })),
+        }));
+        save('polls', mappedPolls);
+      }
+
+      // 12. Notifications
+      if (resNotifs.status === 'fulfilled' && Array.isArray(resNotifs.value)) {
+        const mappedNotifs: AppNotification[] = resNotifs.value.map((n: any) => ({
+          id: n._id || n.id,
+          title: n.title,
+          content: n.content,
+          type: n.type || 'family',
+          category: (n.type as any) || 'family',
+          time: n.createdAt ? new Date(n.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : 'Vừa xong',
+          timestamp: n.createdAt ? new Date(n.createdAt).toLocaleDateString('vi-VN') : 'Vừa xong',
+          read: n.read || false,
+          targetTab: n.targetTab || 'home',
+          targetSubId: n.targetId,
+          senderName: n.senderName,
+          senderAvatar: n.senderAvatar,
+        }));
+        save('notifications', mappedNotifs);
+      }
+
+      // 13. On This Day
+      if (resOtd.status === 'fulfilled' && resOtd.value) {
+        save('onThisDay', resOtd.value);
+      }
+
+      // Single notification trigger after complete initial batch sync
+      this.notify();
+    } catch (err) {
+      console.warn('Initial batch sync warning:', err);
+      this.notify();
+    }
   }
 
   private notify() {
@@ -1018,6 +1409,10 @@ class FamilyService {
   // --- SETTINGS ---
   public getSettings(): AppSettings {
     const s = load('settings', INITIAL_SETTINGS);
+    const currentMember = this.getCurrentMember();
+    if ((currentMember as any)?.settings) {
+      return { ...s, ...(currentMember as any).settings };
+    }
     if (typeof localStorage !== 'undefined') {
       const authUser = localStorage.getItem('family_hub_auth_user');
       const token = localStorage.getItem('family_hub_access_token');
@@ -1033,6 +1428,16 @@ class FamilyService {
     const updated = { ...current, ...newSettings };
     save('settings', updated);
     this.notify();
+
+    // Đồng bộ lên User model trong MongoDB Atlas
+    const currentMember = this.getCurrentMember();
+    if (currentMember && currentMember.id) {
+      import('./api').then(({ api }) => {
+        api.updateUser(currentMember.id, { settings: updated }).catch((err) =>
+          console.warn('Update user settings note:', err)
+        );
+      });
+    }
   }
 
   // --- POSTS / FEED ---
@@ -1441,6 +1846,9 @@ class FamilyService {
   }
 
   public getOnThisDay(): OnThisDayItem | null {
+    const cached = load<OnThisDayItem | null>('onThisDay', null);
+    if (cached) return cached;
+
     const today = new Date();
     const currentYear = today.getFullYear();
 
@@ -1468,6 +1876,17 @@ class FamilyService {
     }
 
     return null;
+  }
+
+  public syncOnThisDayFromBackend(): void {
+    import('./api').then(({ api }) => {
+      api.getOnThisDay().then((res) => {
+        if (res) {
+          save('onThisDay', res);
+          this.notify();
+        }
+      }).catch((err) => console.warn('Sync on this day note:', err));
+    });
   }
 
   // --- CALENDAR ---
@@ -2233,6 +2652,9 @@ class FamilyService {
     });
     save('chatRooms', rooms);
     this.notify();
+
+    // Broadcast pin message via socket
+    socketService.sendPinMessage(roomId, messageId, text);
   }
 
   public unpinMessage(roomId: string): void {
@@ -2242,6 +2664,9 @@ class FamilyService {
     });
     save('chatRooms', rooms);
     this.notify();
+
+    // Broadcast unpin message via socket
+    socketService.sendUnpinMessage(roomId);
   }
 
   public toggleMessageReaction(roomId: string, messageId: string, emoji: string, memberId: string): void {
@@ -2258,6 +2683,9 @@ class FamilyService {
     all[roomId] = updated;
     save('chatMessages', all);
     this.notify();
+
+    // Broadcast reaction via socket
+    socketService.sendReaction(roomId, messageId, emoji, memberId);
   }
 
   // --- SAFETY ---
@@ -2533,6 +2961,11 @@ class FamilyService {
       'Đóng góp quỹ',
       'Khác',
     ];
+    const info = this.getFamilyInfo();
+    if (info.customFinanceCategories && Array.isArray(info.customFinanceCategories) && info.customFinanceCategories.length > 0) {
+      const merged = Array.from(new Set([...defaultCats, ...info.customFinanceCategories]));
+      return merged;
+    }
     return load('custom_finance_categories', defaultCats);
   }
 
@@ -2544,6 +2977,14 @@ class FamilyService {
       const updated = [...list, trimmed];
       save('custom_finance_categories', updated);
       this.notify();
+
+      // Đồng bộ lên FamilyInfo MongoDB Atlas
+      import('./api').then(({ api }) => {
+        api.updateFamilyInfo({ customFinanceCategories: updated }).catch((err) =>
+          console.warn('Update custom finance categories remote note:', err)
+        );
+      });
+
       return updated;
     }
     return list;
@@ -2561,6 +3002,11 @@ class FamilyService {
       'Khu vui chơi',
       'Khác',
     ];
+    const info = this.getFamilyInfo();
+    if (info.customPlaceCategories && Array.isArray(info.customPlaceCategories) && info.customPlaceCategories.length > 0) {
+      const merged = Array.from(new Set([...defaultPlaceCats, ...info.customPlaceCategories]));
+      return merged;
+    }
     return load('custom_place_categories', defaultPlaceCats);
   }
 
@@ -2572,12 +3018,20 @@ class FamilyService {
       const updated = [...list, trimmed];
       save('custom_place_categories', updated);
       this.notify();
+
+      // Đồng bộ lên FamilyInfo MongoDB Atlas
+      import('./api').then(({ api }) => {
+        api.updateFamilyInfo({ customPlaceCategories: updated }).catch((err) =>
+          console.warn('Update custom place categories remote note:', err)
+        );
+      });
+
       return updated;
     }
     return list;
   }
 
-  // --- STORAGE & CACHE MANAGEMENT ---
+  // --- STORAGE & CACHE MANAGEMENT (MEMOIZED) ---
   public getStorageStats(): {
     localStorageSizeKB: number;
     postsCount: number;
@@ -2586,6 +3040,10 @@ class FamilyService {
     tasksCount: number;
     placesCount: number;
   } {
+    if (this.storageStatsCache && Date.now() - this.storageStatsCache.timestamp < 15000) {
+      return this.storageStatsCache.data;
+    }
+
     let totalBytes = 0;
     try {
       for (let i = 0; i < localStorage.length; i++) {
@@ -2611,7 +3069,7 @@ class FamilyService {
       messagesCount += this.getMessages(r.id).length;
     });
 
-    return {
+    const result = {
       localStorageSizeKB: Math.round((totalBytes / 1024) * 10) / 10,
       postsCount,
       eventsCount,
@@ -2619,6 +3077,9 @@ class FamilyService {
       tasksCount,
       placesCount,
     };
+
+    this.storageStatsCache = { data: result, timestamp: Date.now() };
+    return result;
   }
 
   // --- NOTIFICATION SYSTEM & PWA PUSH ---
@@ -2640,7 +3101,7 @@ class FamilyService {
                 badge: '/pwa-192x192.png',
                 vibrate: [200, 100, 200],
                 ...options,
-              });
+              } as any);
             })
             .catch(() => {
               new Notification(title, { icon: '/pwa-192x192.png', ...options });

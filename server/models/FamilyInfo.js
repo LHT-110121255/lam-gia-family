@@ -12,6 +12,8 @@ const familyInfoSchema = new mongoose.Schema(
     elderCareNotes: { type: String, default: '' },
     contactPhone: { type: String, default: '' },
     ancestralHome: { type: String, default: 'Trà Vinh, Việt Nam' },
+    customFinanceCategories: { type: [String], default: [] },
+    customPlaceCategories: { type: [String], default: [] },
   },
   { timestamps: true }
 );

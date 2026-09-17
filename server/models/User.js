@@ -76,6 +76,18 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    settings: {
+      theme: { type: String, default: 'light' },
+      textSize: { type: String, default: 'standard' },
+      pushNotifications: { type: Boolean, default: true },
+      calendarReminders: { type: Boolean, default: true },
+      chatNotifications: { type: Boolean, default: true },
+      locationSharingAllowed: { type: Boolean, default: true },
+      locationSyncInterval: { type: Number, default: 10 },
+      shareBatteryStatus: { type: Boolean, default: true },
+      passcodeProtected: { type: Boolean, default: false },
+      seniorMode: { type: Boolean, default: false },
+    },
     status: {
       type: String,
       default: 'Ở nhà',

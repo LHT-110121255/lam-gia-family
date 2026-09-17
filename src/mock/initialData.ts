@@ -65,20 +65,7 @@ export const INITIAL_MILESTONES: MemoryMilestone[] = [];
 
 export const INITIAL_ALBUMS: MemoryAlbum[] = [];
 
-export const INITIAL_ON_THIS_DAY: OnThisDayItem = {
-  id: "otd-1",
-  yearsAgo: 2,
-  originalDate: "2024-09-16",
-  title: "Chuyến sum họp dã ngoại của cả gia đình",
-  location: "Khu du lịch sinh thái Cù Lao, Vĩnh Long",
-  description:
-    "Ngày này 2 năm trước, cả gia đình cùng nhau đi dã ngoại và thưởng thức bữa cơm thân mật bên bờ sông ấm cúng.",
-  photos: [
-    "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=800&auto=format&fit=crop&q=80",
-    "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&auto=format&fit=crop&q=80",
-  ],
-  taggedMemberIds: ["member-trung"],
-};
+export const INITIAL_ON_THIS_DAY: OnThisDayItem | null = null;
 
 export const INITIAL_EVENTS: CalendarEvent[] = [];
 
@@ -139,42 +126,7 @@ export const INITIAL_WALLET: FamilyWallet = {
   splitBills: [],
 };
 
-export const INITIAL_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: "notif-1",
-    category: "event",
-    type: "event",
-    title: "Sự kiện sắp diễn ra 📅",
-    content:
-      "Sinh nhật Mẹ Gấm sẽ diễn ra vào tuần tới. Đừng quên chuẩn bị quà nhé!",
-    time: "10 phút trước",
-    timestamp: "10 phút trước",
-    read: false,
-    targetTab: "more",
-  },
-  {
-    id: "notif-2",
-    category: "task",
-    type: "task",
-    title: "Nhiệm vụ gia đình mới 📝",
-    content: 'Lâm Huệ Trung vừa hoàn thành công việc: "Mua trái cây cúng rằm".',
-    time: "1 giờ trước",
-    timestamp: "1 giờ trước",
-    read: false,
-    targetTab: "more",
-  },
-  {
-    id: "notif-3",
-    category: "family",
-    type: "family",
-    title: "Bài viết mới 📸",
-    content: "Đại Gia Đình vừa chia sẻ khoảnh khắc mới trên bảng tin gia đình.",
-    time: "3 giờ trước",
-    timestamp: "3 giờ trước",
-    read: true,
-    targetTab: "home",
-  },
-];
+export const INITIAL_NOTIFICATIONS: AppNotification[] = [];
 
 export const INITIAL_SETTINGS: AppSettings = {
   theme: "light",

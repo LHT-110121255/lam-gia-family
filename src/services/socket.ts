@@ -4,17 +4,18 @@ const getSocketUrl = () => {
   if (import.meta.env.VITE_SOCKET_URL) {
     return import.meta.env.VITE_SOCKET_URL;
   }
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL.replace(/\/api\/?$/, "");
+  }
   if (typeof window !== "undefined") {
-    const origin = window.location.origin;
     if (
       window.location.hostname === "localhost" ||
       window.location.hostname === "127.0.0.1"
     ) {
       return "http://localhost:5001";
     }
-    return origin;
   }
-  return "http://localhost:5001";
+  return "https://family-hub-api-ukdy.onrender.com";
 };
 
 class SocketService {

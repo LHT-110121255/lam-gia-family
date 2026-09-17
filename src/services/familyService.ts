@@ -1409,16 +1409,19 @@ class FamilyService {
   // --- SETTINGS ---
   public getSettings(): AppSettings {
     const s = load('settings', INITIAL_SETTINGS);
-    const currentMember = this.getCurrentMember();
-    if ((currentMember as any)?.settings) {
-      return { ...s, ...(currentMember as any).settings };
-    }
     if (typeof localStorage !== 'undefined') {
-      const authUser = localStorage.getItem('family_hub_auth_user');
-      const token = localStorage.getItem('family_hub_access_token');
-      if (!authUser && !token) {
-        return { ...s, isLoggedIn: false, currentUserId: '' };
-      }
+      try {
+        const authUserRaw = localStorage.getItem('family_hub_auth_user');
+        const token = localStorage.getItem('family_hub_access_token');
+        if (authUserRaw) {
+          const authUser = JSON.parse(authUserRaw);
+          if (authUser?.settings) {
+            return { ...s, ...authUser.settings };
+          }
+        } else if (!token) {
+          return { ...s, isLoggedIn: false, currentUserId: '' };
+        }
+      } catch {}
     }
     return s;
   }

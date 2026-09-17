@@ -274,7 +274,7 @@ async function sendPushNotificationToAll(title, body, payloadData = {}) {
   }
 }
 
-// --- SEED DEFAULT ACCOUNTS WITH SECURE PASSWORDS ---
+// --- SEED DEFAULT ADMIN ACCOUNT ONLY ---
 const DEFAULT_ACCOUNTS = [
   {
     username: "lamhuetrung",
@@ -295,66 +295,6 @@ const DEFAULT_ACCOUNTS = [
     avatar:
       "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&auto=format&fit=crop&q=80",
     status: "Ở nhà",
-  },
-  {
-    username: "lamhuethuc",
-    password: "12346",
-    name: "Lâm Huệ Thức",
-    relationship: "Con trai (con cả)",
-    role: "adult",
-    gender: "male",
-    birthDate: "23/10/1999",
-    phone: "076xxxx",
-    generation: 2,
-    jobTitle: "Âm thanh ánh sáng",
-    email: "lamthuctctv@gmail.com",
-    address: "số tre, Tiểu Cần, Vĩnh Long",
-    isAdmin: false,
-    approvalStatus: "approved",
-    isActive: true,
-    avatar:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80",
-    status: "Cơ quan",
-  },
-  {
-    username: "lamhuetri",
-    password: "12346",
-    name: "Lâm Huệ Trí",
-    relationship: "Bố",
-    role: "parent",
-    gender: "male",
-    birthDate: "17/10/1972",
-    phone: "0939604798",
-    generation: 1,
-    jobTitle: "Giáo viên",
-    email: "huetri1972@gmail.com",
-    address: "số tre, Tiểu Cần, Vĩnh Long",
-    isAdmin: false,
-    approvalStatus: "approved",
-    isActive: true,
-    avatar:
-      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&auto=format&fit=crop&q=80",
-    status: "Ở nhà",
-  },
-  {
-    username: "honggam",
-    password: "12346",
-    name: "Trần Thị Hồng Gấm",
-    relationship: "Mẹ",
-    role: "parent",
-    gender: "female",
-    birthDate: "16/09/1976",
-    phone: "0932801048",
-    generation: 1,
-    jobTitle: "Công nhân",
-    email: "",
-    address: "số tre, Tiểu Cần, Vĩnh Long",
-    isAdmin: false,
-    approvalStatus: "approved",
-    isActive: true,
-    avatar:
-      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&auto=format&fit=crop&q=80",
-    status: "Siêu thị",
   },
 ];
 
@@ -1697,11 +1637,71 @@ app.put("/api/family-info", async (req, res) => {
 });
 
 // ==========================================
-// SOCKET.IO REALTIME EVENTS
-// ==========================================
+// Map to track active connected users: userId -> socketId
+const connectedUserSockets = new Map();
+
 io.on("connection", (socket) => {
+  let socketUserId = null;
+
+  socket.on("register_user", async (data) => {
+    if (!data || !data.userId) return;
+    socketUserId = data.userId;
+    connectedUserSockets.set(data.userId, socket.id);
+
+    try {
+      if (mongoose.Types.ObjectId.isValid(data.userId)) {
+        await User.findByIdAndUpdate(data.userId, { isActive: true });
+      }
+      io.emit("user_status_changed", {
+        userId: data.userId,
+        online: true,
+      });
+    } catch (err) {
+      console.warn("Error updating user status on connect:", err.message);
+    }
+  });
+
   socket.on("join_room", (roomId) => {
     socket.join(roomId);
+  });
+
+  socket.on("typing", (data) => {
+    if (!data || !data.roomId) return;
+    socket.to(data.roomId).emit("user_typing", {
+      roomId: data.roomId,
+      userId: data.userId,
+      name: data.name,
+    });
+  });
+
+  socket.on("stop_typing", (data) => {
+    if (!data || !data.roomId) return;
+    socket.to(data.roomId).emit("user_stop_typing", {
+      roomId: data.roomId,
+      userId: data.userId,
+    });
+  });
+
+  socket.on("read_message", async (data) => {
+    try {
+      const { roomId, messageId, userId } = data;
+      if (messageId && mongoose.Types.ObjectId.isValid(messageId) && userId) {
+        const updatedMsg = await Message.findByIdAndUpdate(
+          messageId,
+          { $addToSet: { readBy: userId } },
+          { new: true }
+        );
+        if (updatedMsg) {
+          io.to(roomId || "room-all").emit("message_read_updated", {
+            roomId: roomId || "room-all",
+            messageId,
+            readBy: updatedMsg.readBy,
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Socket read_message error:", err);
+    }
   });
 
   socket.on("send_message", async (data) => {
@@ -1796,8 +1796,16 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("disconnect", () => {
+  socket.on("disconnect", async () => {
     console.log("🔌 Client disconnected:", socket.id);
+    if (socketUserId) {
+      connectedUserSockets.delete(socketUserId);
+      io.emit("user_status_changed", {
+        userId: socketUserId,
+        online: false,
+        lastSeen: "Vừa xong",
+      });
+    }
   });
 });
 

@@ -312,6 +312,89 @@ class FamilyService {
       this.notify();
     });
 
+    // 9. Lắng nghe Bài Viết, Thả Tym, Bình Luận (Posts Realtime)
+    socketService.onNewPost((post) => {
+      if (!post) return;
+      const list = this.getPosts();
+      const id = post._id || post.id;
+      if (!list.some((p) => p.id === id)) {
+        save('posts', [{ ...post, id }, ...list]);
+        this.notify();
+      }
+    });
+
+    socketService.onPostUpdated((post) => {
+      if (!post) return;
+      const list = this.getPosts();
+      const id = post._id || post.id;
+      const next = list.map((p) => (p.id === id ? { ...p, ...post, id } : p));
+      save('posts', next);
+      this.notify();
+    });
+
+    socketService.onPostDeleted(({ postId }) => {
+      if (!postId) return;
+      const list = this.getPosts().filter((p) => p.id !== postId);
+      save('posts', list);
+      this.notify();
+    });
+
+    // 10. Lắng nghe Tin Nhắn Realtime (Chat Messages)
+    socketService.onReceiveMessage((msg) => {
+      if (!msg) return;
+      const messages = this.getMessages();
+      const id = msg._id || msg.id;
+
+      const tempId = msg.clientTempId;
+      const existsIndex = messages.findIndex((m) => m.id === id || (tempId && m.id === tempId));
+
+      let updatedMessages: ChatMessage[];
+      if (existsIndex >= 0) {
+        updatedMessages = [...messages];
+        updatedMessages[existsIndex] = {
+          ...updatedMessages[existsIndex],
+          ...msg,
+          id,
+        };
+      } else {
+        updatedMessages = [...messages, { ...msg, id }];
+      }
+
+      save('messages', updatedMessages);
+
+      const rooms = this.getChatRooms();
+      const roomId = msg.roomId || 'room-all';
+      const rIdx = rooms.findIndex((r) => r.id === roomId);
+      if (rIdx >= 0) {
+        rooms[rIdx] = {
+          ...rooms[rIdx],
+          lastMessage: msg.text || (msg.mediaUrl ? '[Hình ảnh]' : 'Tin nhắn mới'),
+          lastMessageTime: msg.timestamp || new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        };
+        save('chat_rooms', rooms);
+      }
+
+      this.notify();
+    });
+
+    socketService.onMessageDeleted(({ roomId, messageId }) => {
+      if (!messageId) return;
+      const messages = this.getMessages().map((m) =>
+        m.id === messageId ? { ...m, isDeleted: true, text: 'Tin nhắn đã được thu hồi' } : m
+      );
+      save('messages', messages);
+      this.notify();
+    });
+
+    socketService.onMessageReadUpdated(({ roomId, messageId, readBy }) => {
+      if (!messageId || !readBy) return;
+      const messages = this.getMessages().map((m) =>
+        m.id === messageId ? { ...m, readBy } : m
+      );
+      save('messages', messages);
+      this.notify();
+    });
+
     // 9. Lắng nghe thay đổi storage từ các tab khác trong cùng trình duyệt
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', (e) => {

@@ -35,6 +35,10 @@ export const Avatar: React.FC<AvatarProps> = ({
 }) => {
   const [hasError, setHasError] = React.useState(false);
 
+  React.useEffect(() => {
+    setHasError(false);
+  }, [src]);
+
   const getInitials = (n: string) => {
     const parts = n.trim().split(' ');
     if (parts.length >= 2) {

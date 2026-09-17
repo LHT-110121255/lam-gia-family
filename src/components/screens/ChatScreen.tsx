@@ -140,6 +140,36 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     unreadCount: 0,
   };
 
+  // Typing state
+  const [typingUsers, setTypingUsers] = useState<Record<string, string>>({});
+  const typingTimeoutRef = useRef<any>(null);
+
+  // Connect socket and listen for typing events
+  useEffect(() => {
+    socketService.connect(currentMember.id);
+
+    const unsubTyping = socketService.onUserTyping(({ roomId, userId, name }) => {
+      if (roomId === activeRoom.id && userId !== currentMember.id) {
+        setTypingUsers((prev) => ({ ...prev, [userId]: name }));
+      }
+    });
+
+    const unsubStopTyping = socketService.onUserStopTyping(({ roomId, userId }) => {
+      if (roomId === activeRoom.id) {
+        setTypingUsers((prev) => {
+          const next = { ...prev };
+          delete next[userId];
+          return next;
+        });
+      }
+    });
+
+    return () => {
+      unsubTyping();
+      unsubStopTyping();
+    };
+  }, [activeRoom.id, currentMember.id]);
+
   // Scroll to bottom and mark room as read when messages change
   useEffect(() => {
     if (viewMode === 'room') {
@@ -161,10 +191,32 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
   const getMember = (id: string) => allMembers.find((m) => m.id === id);
 
+  // Handle Input Change with typing indicator
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setInputText(val);
+
+    if (val.trim()) {
+      socketService.sendTyping(activeRoom.id, {
+        userId: currentMember.id,
+        name: currentMember.name,
+      });
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        socketService.sendStopTyping(activeRoom.id, currentMember.id);
+      }, 2500);
+    } else {
+      socketService.sendStopTyping(activeRoom.id, currentMember.id);
+    }
+  };
+
   // Handle Send Message
   const handleSend = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputText.trim() && uploadingImages.length === 0) return;
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    socketService.sendStopTyping(activeRoom.id, currentMember.id);
 
     onSendMessage(activeRoom.id, {
       text: inputText.trim(),
@@ -665,6 +717,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 );
               })
             )}
+
+            {/* Typing Indicator */}
+            {Object.keys(typingUsers).length > 0 && (
+              <div className="flex items-center gap-2 px-4 py-1.5 text-stone-500 text-[11px] italic font-medium bg-[#FFFBF7]/80 animate-pulse">
+                <div className="flex gap-1 items-center">
+                  <span className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-bounce" />
+                  <span className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-bounce [animation-delay:0.2s]" />
+                  <span className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-bounce [animation-delay:0.4s]" />
+                </div>
+                <span>{Object.values(typingUsers).join(', ')} đang soạn tin...</span>
+              </div>
+            )}
           </div>
 
           {/* 5. Image Preview before sending */}
@@ -735,7 +799,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               <input
                 type="text"
                 value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
+                onChange={handleInputChange}
                 placeholder={
                   isPriority
                     ? 'Gõ tin nhắn khẩn cấp cho cả phòng...'

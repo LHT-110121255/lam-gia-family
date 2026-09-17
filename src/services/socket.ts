@@ -1,20 +1,60 @@
-import { io, Socket } from "socket.io-client";
-
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5001";
+const getSocketUrl = () => {
+  if (import.meta.env.VITE_SOCKET_URL) {
+    return import.meta.env.VITE_SOCKET_URL;
+  }
+  if (typeof window !== "undefined") {
+    const origin = window.location.origin;
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      return "http://localhost:5001";
+    }
+    return origin;
+  }
+  return "http://localhost:5001";
+};
 
 class SocketService {
   private socket: Socket | null = null;
   private joinedRooms: Set<string> = new Set(["room-all"]);
+  private currentUserId: string | null = null;
 
-  connect() {
-    if (this.socket) return;
-    this.socket = io(SOCKET_URL, {
+  connect(userId?: string) {
+    if (userId) {
+      this.currentUserId = userId;
+    }
+    if (this.socket) {
+      if (this.socket.disconnected) {
+        this.socket.connect();
+      }
+      if (this.currentUserId) {
+        this.socket.emit("register_user", { userId: this.currentUserId });
+      }
+      return;
+    }
+
+    this.socket = io(getSocketUrl(), {
       transports: ["websocket", "polling"],
       autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
 
     this.socket.on("connect", () => {
-      // Rejoin all active rooms
+      console.log("⚡ Socket connected:", this.socket?.id);
+      if (this.currentUserId) {
+        this.socket?.emit("register_user", { userId: this.currentUserId });
+      }
+      this.joinedRooms.forEach((roomId) => {
+        this.socket?.emit("join_room", roomId);
+      });
+    });
+
+    this.socket.on("reconnect", (attempt) => {
+      console.log("⚡ Socket reconnected after attempt:", attempt);
+      if (this.currentUserId) {
+        this.socket?.emit("register_user", { userId: this.currentUserId });
+      }
       this.joinedRooms.forEach((roomId) => {
         this.socket?.emit("join_room", roomId);
       });
@@ -53,6 +93,46 @@ class SocketService {
     this.socket?.on("message_deleted", callback);
     return () => {
       this.socket?.off("message_deleted", callback);
+    };
+  }
+
+  sendTyping(roomId: string, user: { userId: string; name: string }) {
+    this.socket?.emit("typing", { roomId, userId: user.userId, name: user.name });
+  }
+
+  sendStopTyping(roomId: string, userId: string) {
+    this.socket?.emit("stop_typing", { roomId, userId });
+  }
+
+  onUserTyping(callback: (data: { roomId: string; userId: string; name: string }) => void) {
+    this.socket?.on("user_typing", callback);
+    return () => {
+      this.socket?.off("user_typing", callback);
+    };
+  }
+
+  onUserStopTyping(callback: (data: { roomId: string; userId: string }) => void) {
+    this.socket?.on("user_stop_typing", callback);
+    return () => {
+      this.socket?.off("user_stop_typing", callback);
+    };
+  }
+
+  markMessageRead(roomId: string, messageId: string, userId: string) {
+    this.socket?.emit("read_message", { roomId, messageId, userId });
+  }
+
+  onMessageReadUpdated(callback: (data: { roomId: string; messageId: string; readBy: string[] }) => void) {
+    this.socket?.on("message_read_updated", callback);
+    return () => {
+      this.socket?.off("message_read_updated", callback);
+    };
+  }
+
+  onUserStatusChanged(callback: (data: { userId: string; username?: string; online: boolean; lastSeen?: string }) => void) {
+    this.socket?.on("user_status_changed", callback);
+    return () => {
+      this.socket?.off("user_status_changed", callback);
     };
   }
 

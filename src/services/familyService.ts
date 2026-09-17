@@ -508,6 +508,18 @@ class FamilyService {
     // 13. Lắng nghe Cảnh báo Khẩn cấp (SOS Alert)
     socketService.onSOSAlert((alert) => {
       if (!alert) return;
+      const currentMember = this.getCurrentMember();
+      const currentUserId = currentMember?.id || (currentMember as any)?._id;
+
+      // Không tự hiển thị lại cảnh báo do chính mình kích hoạt
+      if (alert.userId && (alert.userId === currentUserId || alert.userId === (currentMember as any)?.username)) {
+        return;
+      }
+
+      const notifications = this.getNotifications();
+      const isDup = notifications.some((n) => n.type === 'sos' && n.content.includes(alert.userName));
+      if (isDup) return;
+
       this.createNotification({
         title: '🚨 CẢNH BÁO SOS KHẨN CẤP!',
         content: `${alert.userName || 'Thành viên gia đình'} vừa kích hoạt nút SOS khẩn cấp!`,
@@ -520,11 +532,25 @@ class FamilyService {
     // 14. Lắng nghe Thông báo gia đình Realtime (In-App Notifications)
     socketService.onNewNotification((notif) => {
       if (!notif) return;
+      const currentMember = this.getCurrentMember();
+      const currentUserId = currentMember?.id || (currentMember as any)?._id;
+
+      // Không hiển thị lại thông báo do chính mình vừa tạo (đã khởi tạo ở clientSender)
+      if (notif.senderId && (notif.senderId === currentUserId || notif.senderId === (currentMember as any)?.username)) {
+        return;
+      }
+
       const notifications = this.getNotifications();
       const id = notif._id || notif.id;
-      if (!notifications.some((n) => n.id === id)) {
+
+      // Lọc trùng theo ID hoặc theo Tiêu đề + Nội dung
+      const isDuplicate = notifications.some(
+        (n) => (id && n.id === id) || (n.title === notif.title && n.content === notif.content)
+      );
+
+      if (!isDuplicate) {
         const newNotif: AppNotification = {
-          id,
+          id: id || ('notif-' + Date.now()),
           title: notif.title,
           content: notif.content,
           type: notif.type || 'family',
@@ -545,7 +571,7 @@ class FamilyService {
         if (settings.pushNotifications) {
           this.triggerSystemNotification(notif.title, {
             body: notif.content,
-            tag: id,
+            tag: id || notif.title,
           });
         }
       }
@@ -991,7 +1017,28 @@ class FamilyService {
               isActive: ru.isActive !== false,
             };
             if (idx >= 0) {
-              merged[idx] = { ...merged[idx], ...formatted, id: merged[idx].id || formatted.id };
+              const existing = merged[idx];
+              const ruAvatar = (ru.avatar && ru.avatar.trim() && !ru.avatar.includes('photo-1535713875002')) ? ru.avatar : null;
+              const existingAvatar = (existing.avatar && existing.avatar.trim() && !existing.avatar.includes('photo-1535713875002')) ? existing.avatar : null;
+              const finalAvatar = ruAvatar || existingAvatar || formatted.avatar;
+
+              merged[idx] = {
+                ...formatted,
+                ...existing,
+                name: ru.name || existing.name || formatted.name,
+                avatar: finalAvatar,
+                phone: ru.phone || existing.phone || formatted.phone,
+                email: ru.email || existing.email || formatted.email,
+                relationship: ru.relationship || existing.relationship || formatted.relationship,
+                role: ru.role || existing.role || formatted.role,
+                jobTitle: ru.jobTitle || existing.jobTitle || formatted.jobTitle,
+                birthDate: ru.birthDate || existing.birthDate || formatted.birthDate,
+                bloodType: ru.bloodType || existing.bloodType,
+                allergies: ru.allergies || existing.allergies,
+                medicalNotes: ru.medicalNotes || existing.medicalNotes,
+                hobbies: ru.hobbies || existing.hobbies,
+                id: existing.id || formatted.id,
+              };
             } else {
               merged.push(formatted);
             }
@@ -1097,7 +1144,51 @@ class FamilyService {
     this.updateSettings({ currentUserId: finalId, isLoggedIn: true });
   }
 
-  public updateMember(id: string, updates: Partial<FamilyMember>): FamilyMember | undefined {
+  private remoteUpdateTimers: Map<string, any> = new Map();
+  private pendingRemoteUpdates: Map<string, Partial<FamilyMember>> = new Map();
+  private lastRemoteCallTime: Map<string, number> = new Map();
+
+  private scheduleRemoteUpdate(apiUserId: string, updates: Partial<FamilyMember>) {
+    const HIGH_FREQ_KEYS = new Set(['latitude', 'longitude', 'locationAddress', 'lastLocationUpdated', 'lastSeen', 'onlineStatus', 'batteryLevel']);
+    const isHighFreqOnly = Object.keys(updates).every((key) => HIGH_FREQ_KEYS.has(key));
+
+    if (!isHighFreqOnly) {
+      // Dữ liệu profile quan trọng -> Gửi ngay lập tức
+      import('./api').then(({ api }) => {
+        api.updateUser(apiUserId, updates).catch((err) => console.warn('Update user remote note:', err));
+      });
+      return;
+    }
+
+    // Dữ liệu vị trí/trạng thái tần suất cao -> Throttle tối đa 1 lần mỗi 30 giây
+    const pending = this.pendingRemoteUpdates.get(apiUserId) || {};
+    this.pendingRemoteUpdates.set(apiUserId, { ...pending, ...updates });
+
+    const now = Date.now();
+    const lastTime = this.lastRemoteCallTime.get(apiUserId) || 0;
+    const THROTTLE_MS = 30000; // 30s
+
+    if (this.remoteUpdateTimers.has(apiUserId)) {
+      return;
+    }
+
+    const delay = Math.max(0, THROTTLE_MS - (now - lastTime));
+    const timer = setTimeout(() => {
+      this.remoteUpdateTimers.delete(apiUserId);
+      const toSend = this.pendingRemoteUpdates.get(apiUserId);
+      if (toSend && Object.keys(toSend).length > 0) {
+        this.pendingRemoteUpdates.delete(apiUserId);
+        this.lastRemoteCallTime.set(apiUserId, Date.now());
+        import('./api').then(({ api }) => {
+          api.updateUser(apiUserId, toSend).catch((err) => console.warn('Update user remote note:', err));
+        });
+      }
+    }, delay);
+
+    this.remoteUpdateTimers.set(apiUserId, timer);
+  }
+
+  public updateMember(id: string, updates: Partial<FamilyMember>, options?: { skipRemoteApi?: boolean }): FamilyMember | undefined {
     const members = this.getAllMembers();
     let updatedMember: FamilyMember | undefined;
     const target = this.getMemberById(id);
@@ -1110,13 +1201,37 @@ class FamilyService {
       return m;
     });
     save('members', nextMembers);
+
+    // Cập nhật auth_user session trong localStorage nếu thành viên được sửa là người dùng đang đăng nhập
+    if (updatedMember && typeof localStorage !== 'undefined') {
+      try {
+        const rawAuthUser = localStorage.getItem('family_hub_auth_user');
+        if (rawAuthUser) {
+          const authUser = JSON.parse(rawAuthUser);
+          if (
+            authUser &&
+            (authUser.username === updatedMember.username ||
+              authUser._id === updatedMember.id ||
+              authUser.id === updatedMember.id ||
+              id === authUser._id ||
+              id === authUser.id)
+          ) {
+            const nextAuthUser = { ...authUser, ...updatedMember };
+            localStorage.setItem('family_hub_auth_user', JSON.stringify(nextAuthUser));
+          }
+        }
+      } catch (err) {
+        console.warn('Sync auth user storage note:', err);
+      }
+    }
+
     this.notify();
 
-    // Gửi cập nhật lên backend MongoDB Atlas
-    import('./api').then(({ api }) => {
+    // Gửi cập nhật lên backend MongoDB Atlas (Throttled nếu là GPS/Trạng thái, Skip nếu là socket echo)
+    if (!options?.skipRemoteApi) {
       const apiUserId = target ? ((target as any)._id || target.username || target.id) : id;
-      api.updateUser(apiUserId, updates).catch((err) => console.warn('Update user remote note:', err));
-    });
+      this.scheduleRemoteUpdate(apiUserId, updates);
+    }
 
     return updatedMember;
   }

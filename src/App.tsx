@@ -98,7 +98,12 @@ export default function App() {
         ? { id, text: input, type: defaultType }
         : { id, type: input.type || defaultType, ...input };
 
-    setToasts((prev) => [...prev, toastObj]);
+    setToasts((prev) => {
+      const isDuplicate = prev.some((t) => t.text === toastObj.text && t.type === toastObj.type);
+      if (isDuplicate) return prev;
+      return [...prev, toastObj];
+    });
+
     const duration = toastObj.duration || (toastObj.type === 'sos' ? 8000 : 4000);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -113,7 +118,11 @@ export default function App() {
     const handleToastEvent = (e: any) => {
       if (e.detail) {
         const toastItem: ToastMessage = e.detail;
-        setToasts((prev) => [...prev, toastItem]);
+        setToasts((prev) => {
+          const isDuplicate = prev.some((t) => t.text === toastItem.text && t.type === toastItem.type);
+          if (isDuplicate) return prev;
+          return [...prev, toastItem];
+        });
         const duration = toastItem.duration || (toastItem.type === 'sos' ? 8000 : 4000);
         setTimeout(() => {
           setToasts((prev) => prev.filter((t) => t.id !== toastItem.id));

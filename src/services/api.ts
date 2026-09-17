@@ -530,7 +530,15 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(data),
       });
-      return await handleApiResponse(response);
+      const resData = await handleApiResponse(response);
+      if (resData) {
+        const updatedUser = resData.user || resData;
+        const currentUser = tokenStorage.getUser();
+        if (currentUser && (currentUser._id === userId || currentUser.id === userId || currentUser.username === userId)) {
+          tokenStorage.setUser({ ...currentUser, ...updatedUser });
+        }
+      }
+      return resData;
     } catch (err) {
       console.warn('Update user remote note:', err);
       return null;

@@ -32,20 +32,36 @@ class LocationSyncService {
         return;
       }
 
-      familyService.updateMember(data.userId, {
-        latitude: data.latitude,
-        longitude: data.longitude,
-        locationAddress: data.address || undefined,
-        batteryLevel: data.batteryLevel !== undefined ? data.batteryLevel : undefined,
-        lastLocationUpdated: data.updatedAt || new Date().toISOString(),
-        lastSeen: 'Vừa xong',
-        onlineStatus: 'online',
-      });
+      // Cập nhật state local cho UI, KHÔNG gửi lại HTTP PUT API remote
+      familyService.updateMember(
+        data.userId,
+        {
+          latitude: data.latitude,
+          longitude: data.longitude,
+          locationAddress: data.address || undefined,
+          batteryLevel: data.batteryLevel !== undefined ? data.batteryLevel : undefined,
+          lastLocationUpdated: data.updatedAt || new Date().toISOString(),
+          lastSeen: 'Vừa xong',
+          onlineStatus: 'online',
+        },
+        { skipRemoteApi: true }
+      );
     });
 
-    // 2. Lắng nghe thay đổi cài đặt (khi người dùng đổi chu kỳ 5/10/15p hoặc tắt/bật chia sẻ)
+    // 2. Lắng nghe thay đổi cài đặt (chỉ restart schedule khi cài đặt chia sẻ/chu kỳ thực sự thay đổi)
+    let lastSharingAllowed: boolean | undefined;
+    let lastInterval: number | undefined;
+
     familyService.subscribe(() => {
-      this.restartSyncSchedule();
+      const settings = familyService.getSettings();
+      if (
+        settings.locationSharingAllowed !== lastSharingAllowed ||
+        settings.locationSyncInterval !== lastInterval
+      ) {
+        lastSharingAllowed = settings.locationSharingAllowed;
+        lastInterval = settings.locationSyncInterval;
+        this.restartSyncSchedule();
+      }
     });
 
     // 3. Khởi động chu kỳ ban đầu
@@ -233,6 +249,9 @@ class LocationSyncService {
   }
 
   private watchId: number | null = null;
+  private watchLastLat: number | null = null;
+  private watchLastLng: number | null = null;
+  private watchLastTime = 0;
 
   /**
    * Khởi động theo dõi vị trí GPS liên tục Realtime khi mở màn hình Bản đồ
@@ -248,11 +267,28 @@ class LocationSyncService {
         const currentMember = familyService.getCurrentMember();
         if (!currentMember) return;
 
+        const now = Date.now();
+        // Lọc nhiễu GPS nếu khoảng cách di chuyển quá nhỏ (< 5m) và khoảng cách thời gian ngắn (< 8 giây)
+        if (this.watchLastLat !== null && this.watchLastLng !== null) {
+          const latDiff = Math.abs(lat - this.watchLastLat);
+          const lngDiff = Math.abs(lng - this.watchLastLng);
+          if (latDiff < 0.00005 && lngDiff < 0.00005 && now - this.watchLastTime < 8000) {
+            return;
+          }
+        }
+
+        this.watchLastLat = lat;
+        this.watchLastLng = lng;
+        this.watchLastTime = now;
+
         let address = currentMember.locationAddress || '';
-        try {
-          address = await geocodingService.reverseGeocode(lat, lng);
-        } catch {
-          address = `Tọa độ: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        const movedSignificantly = !currentMember.latitude || Math.hypot(lat - currentMember.latitude, lng - currentMember.longitude) > 0.0004;
+        if (!address || movedSignificantly) {
+          try {
+            address = await geocodingService.reverseGeocode(lat, lng);
+          } catch {
+            address = `Tọa độ: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+          }
         }
 
         const battery = await this.getBatteryLevel();

@@ -349,7 +349,7 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
                             {/* Privacy Badge */}
                             {post.privacy === "parents" && (
                               <span className="inline-flex items-center gap-1 text-[9px] font-bold bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.2 rounded-md">
-                                <Shield className="w-2.5 h-2.5" /> Bố Mẹ
+                                <Shield className="w-2.5 h-2.5" /> Tỉa Mẹ
                               </span>
                             )}
                             {post.privacy === "siblings" && (
@@ -481,8 +481,10 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
                     <div className="bg-stone-50/70 p-4 border-t border-stone-100 space-y-2.5">
                       {post.comments.map((c) => {
                         const cAuthor = getMember(c.authorId);
-                        const authorName = c.authorName || cAuthor?.name || "Thành viên";
-                        const authorAvatar = c.authorAvatar || cAuthor?.avatar || "";
+                        const authorName =
+                          c.authorName || cAuthor?.name || "Thành viên";
+                        const authorAvatar =
+                          c.authorAvatar || cAuthor?.avatar || "";
                         const isOwnComment =
                           c.authorId === currentMember.id ||
                           c.authorId === currentMember.username ||
@@ -569,8 +571,10 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
                                       })
                                     }
                                     onKeyDown={(e) => {
-                                      if (e.key === "Enter") handleSaveEditComment();
-                                      if (e.key === "Escape") setEditingComment(null);
+                                      if (e.key === "Enter")
+                                        handleSaveEditComment();
+                                      if (e.key === "Escape")
+                                        setEditingComment(null);
                                     }}
                                     autoFocus
                                     className="w-full text-xs bg-stone-50 border border-orange-300 rounded-xl px-2.5 py-1.5 text-stone-900 focus:outline-hidden focus:ring-1 focus:ring-orange-500"
@@ -685,7 +689,11 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (window.confirm(`Bạn có chắc muốn xóa mốc sự kiện "${milestone.title}"?`)) {
+                              if (
+                                window.confirm(
+                                  `Bạn có chắc muốn xóa mốc sự kiện "${milestone.title}"?`,
+                                )
+                              ) {
                                 onDeleteMilestone(milestone.id);
                               }
                             }}
@@ -731,25 +739,26 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
                     )}
 
                     {/* Tagged Members */}
-                    {milestone.taggedMemberIds && milestone.taggedMemberIds.length > 0 && (
-                      <div className="flex items-center gap-1 pt-1 overflow-x-auto no-scrollbar">
-                        <span className="text-[10px] text-stone-400 mr-1">
-                          Có mặt:
-                        </span>
-                        {milestone.taggedMemberIds.map((mId) => {
-                          const m = getMember(mId);
-                          return m ? (
-                            <span
-                              key={mId}
-                              onClick={() => onOpenMemberProfile(mId)}
-                              className="text-[10px] bg-stone-100 text-stone-700 px-2 py-0.5 rounded-full font-medium shrink-0 cursor-pointer hover:bg-stone-200"
-                            >
-                              {m.name}
-                            </span>
-                          ) : null;
-                        })}
-                      </div>
-                    )}
+                    {milestone.taggedMemberIds &&
+                      milestone.taggedMemberIds.length > 0 && (
+                        <div className="flex items-center gap-1 pt-1 overflow-x-auto no-scrollbar">
+                          <span className="text-[10px] text-stone-400 mr-1">
+                            Có mặt:
+                          </span>
+                          {milestone.taggedMemberIds.map((mId) => {
+                            const m = getMember(mId);
+                            return m ? (
+                              <span
+                                key={mId}
+                                onClick={() => onOpenMemberProfile(mId)}
+                                className="text-[10px] bg-stone-100 text-stone-700 px-2 py-0.5 rounded-full font-medium shrink-0 cursor-pointer hover:bg-stone-200"
+                              >
+                                {m.name}
+                              </span>
+                            ) : null;
+                          })}
+                        </div>
+                      )}
                   </div>
                 </div>
               ))
@@ -809,7 +818,11 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (window.confirm(`Bạn có chắc muốn xóa album "${album.title}"?`)) {
+                          if (
+                            window.confirm(
+                              `Bạn có chắc muốn xóa album "${album.title}"?`,
+                            )
+                          ) {
                             onDeleteAlbum(album.id);
                           }
                         }}
@@ -869,7 +882,7 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
                       setIsUploadingPhotoToAlbum(true);
                       try {
                         const uploadPromises = Array.from(files).map((file) =>
-                          api.uploadFile(file)
+                          api.uploadFile(file),
                         );
                         const urls = await Promise.all(uploadPromises);
                         urls.forEach((url) => {
@@ -891,13 +904,15 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
                                   ...urls.map((u) => ({
                                     id: "p-" + Date.now() + Math.random(),
                                     url: u,
-                                    date: new Date().toISOString().split("T")[0],
+                                    date: new Date()
+                                      .toISOString()
+                                      .split("T")[0],
                                     taggedMemberIds: [currentMember.id],
                                   })),
                                   ...prev.photos,
                                 ],
                               }
-                            : null
+                            : null,
                         );
                       } catch (err) {
                         console.error("Lỗi upload ảnh album:", err);
@@ -911,7 +926,11 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
                 {onDeleteAlbum && (
                   <button
                     onClick={() => {
-                      if (window.confirm(`Bạn có chắc muốn xóa toàn bộ album "${selectedAlbum.title}"?`)) {
+                      if (
+                        window.confirm(
+                          `Bạn có chắc muốn xóa toàn bộ album "${selectedAlbum.title}"?`,
+                        )
+                      ) {
                         const id = selectedAlbum.id;
                         setSelectedAlbum(null);
                         onDeleteAlbum(id);
@@ -945,15 +964,21 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (window.confirm("Bạn có chắc muốn xóa ảnh này khỏi album?")) {
+                          if (
+                            window.confirm(
+                              "Bạn có chắc muốn xóa ảnh này khỏi album?",
+                            )
+                          ) {
                             onDeletePhotoFromAlbum(selectedAlbum.id, photo.id);
                             setSelectedAlbum((prev) =>
                               prev
                                 ? {
                                     ...prev,
-                                    photos: prev.photos.filter((p) => p.id !== photo.id),
+                                    photos: prev.photos.filter(
+                                      (p) => p.id !== photo.id,
+                                    ),
                                   }
-                                : null
+                                : null,
                             );
                           }
                         }}
@@ -1024,9 +1049,7 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
             <select
               value={newAlbumCategory}
               onChange={(e) =>
-                setNewAlbumCategory(
-                  e.target.value as MemoryAlbum["category"]
-                )
+                setNewAlbumCategory(e.target.value as MemoryAlbum["category"])
               }
               className="w-full p-2.5 bg-stone-50 border border-stone-200 rounded-xl text-stone-800 text-xs font-medium"
             >
@@ -1149,7 +1172,9 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
         >
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className="font-bold text-stone-800 block mb-1">Năm *</label>
+              <label className="font-bold text-stone-800 block mb-1">
+                Năm *
+              </label>
               <input
                 type="number"
                 required
@@ -1205,11 +1230,22 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
             </label>
             <div className="flex items-center gap-2 flex-wrap">
               {newMilestonePhotos.map((p, idx) => (
-                <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-stone-200">
-                  <img src={p} alt="Ảnh mốc" className="w-full h-full object-cover" />
+                <div
+                  key={idx}
+                  className="relative w-16 h-16 rounded-xl overflow-hidden border border-stone-200"
+                >
+                  <img
+                    src={p}
+                    alt="Ảnh mốc"
+                    className="w-full h-full object-cover"
+                  />
                   <button
                     type="button"
-                    onClick={() => setNewMilestonePhotos(prev => prev.filter((_, i) => i !== idx))}
+                    onClick={() =>
+                      setNewMilestonePhotos((prev) =>
+                        prev.filter((_, i) => i !== idx),
+                      )
+                    }
                     className="absolute top-0.5 right-0.5 p-0.5 bg-black/60 rounded-full text-white"
                   >
                     <X className="w-2.5 h-2.5" />
@@ -1233,7 +1269,9 @@ export const MemoriesScreen: React.FC<MemoriesScreenProps> = ({
                     if (!files || files.length === 0) return;
                     setIsUploadingMilestonePhoto(true);
                     try {
-                      const uploadPromises = Array.from(files).map((file) => api.uploadFile(file));
+                      const uploadPromises = Array.from(files).map((file) =>
+                        api.uploadFile(file),
+                      );
                       const urls = await Promise.all(uploadPromises);
                       setNewMilestonePhotos((prev) => [...prev, ...urls]);
                     } catch (err) {

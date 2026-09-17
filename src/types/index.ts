@@ -1,17 +1,17 @@
-export type MemberRole = 'elder' | 'parent' | 'adult' | 'teen' | 'child';
+export type MemberRole = "elder" | "parent" | "adult" | "teen" | "child";
 
 export interface FamilyMember {
   id: string;
   username?: string;
   name: string;
-  relationship: string; // 'Ông nội', 'Bà nội', 'Bố', 'Mẹ', 'Con trai lớn', 'Con gái', 'Cháu út', etc.
+  relationship: string; // 'Ông nội', 'Bà nội', 'Tỉa', 'Mẹ', 'Con trai lớn', 'Con gái', 'Cháu út', etc.
   role: MemberRole;
   generation: number; // 1 = Grandparents, 2 = Parents, 3 = Children, 4 = Grandchildren
   avatar: string;
   birthDate: string;
   phone: string;
   email?: string;
-  onlineStatus: 'online' | 'away' | 'offline';
+  onlineStatus: "online" | "away" | "offline";
   lastSeen?: string;
   lastLocationUpdated?: string;
   batteryLevel?: number;
@@ -26,7 +26,7 @@ export interface FamilyMember {
   allergies?: string;
   medicalNotes?: string;
   jobTitle?: string;
-  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  approvalStatus?: "pending" | "approved" | "rejected";
   isAdmin?: boolean;
   isActive?: boolean;
   createdAt?: string;
@@ -55,7 +55,7 @@ export interface PostComment {
   replyToId?: string;
 }
 
-export type PostPrivacy = 'all' | 'parents' | 'siblings' | 'private';
+export type PostPrivacy = "all" | "parents" | "siblings" | "private";
 
 export interface FamilyPost {
   id: string;
@@ -64,14 +64,14 @@ export interface FamilyPost {
   authorAvatar?: string;
   content: string;
   mediaUrls: string[];
-  mediaType?: 'photo' | 'multiple_photos' | 'video_preview';
+  mediaType?: "photo" | "multiple_photos" | "video_preview";
   createdAt: string;
   location?: string;
   likes: string[]; // member IDs who reacted
   comments: PostComment[];
   pinned?: boolean;
   feeling?: string;
-  privacy?: PostPrivacy; // 'all': Cả gia đình, 'parents': Bố mẹ, 'siblings': Anh chị em, 'private': Chỉ mình tôi
+  privacy?: PostPrivacy; // 'all': Cả gia đình, 'parents': Tỉa mẹ, 'siblings': Anh chị em, 'private': Chỉ mình tôi
 }
 
 export interface MemoryMilestone {
@@ -98,7 +98,7 @@ export interface AlbumPhoto {
 export interface MemoryAlbum {
   id: string;
   title: string;
-  category: 'Tết' | 'Sinh nhật' | 'Du lịch' | 'Gia đình' | 'Em bé' | 'Kỷ niệm';
+  category: "Tết" | "Sinh nhật" | "Du lịch" | "Gia đình" | "Em bé" | "Kỷ niệm";
   coverUrl: string;
   photoCount: number;
   photos: AlbumPhoto[];
@@ -116,14 +116,14 @@ export interface OnThisDayItem {
 }
 
 export type EventType =
-  | 'birthday'
-  | 'anniversary'
-  | 'health'
-  | 'study'
-  | 'chore'
-  | 'trip'
-  | 'holiday'
-  | 'other';
+  | "birthday"
+  | "anniversary"
+  | "health"
+  | "study"
+  | "chore"
+  | "trip"
+  | "holiday"
+  | "other";
 
 export interface CalendarEvent {
   id: string;
@@ -154,13 +154,13 @@ export interface TaskItem {
 }
 
 export type TaskCategory =
-  | 'việc_nhà'
-  | 'sửa_chữa'
-  | 'mua_sắm'
-  | 'cúng_lễ'
-  | 'chăm_sóc'
-  | 'sinh_hoạt'
-  | 'khác'
+  | "việc_nhà"
+  | "sửa_chữa"
+  | "mua_sắm"
+  | "cúng_lễ"
+  | "chăm_sóc"
+  | "sinh_hoạt"
+  | "khác"
   | string;
 
 export interface SharedTaskList {
@@ -193,7 +193,7 @@ export interface ChatMessage {
   roomId: string;
   senderId: string;
   text: string;
-  type: 'text' | 'image' | 'voice' | 'priority' | 'system';
+  type: "text" | "image" | "voice" | "priority" | "system";
   mediaUrl?: string;
   mediaUrls?: string[];
   audioDuration?: number; // in seconds
@@ -208,7 +208,7 @@ export interface ChatMessage {
 export interface ChatRoom {
   id: string;
   name: string;
-  type: 'all' | 'parents' | 'siblings' | 'direct' | 'custom';
+  type: "all" | "parents" | "siblings" | "direct" | "custom";
   avatar?: string;
   description?: string;
   memberIds: string[];
@@ -251,7 +251,7 @@ export interface SafetyCheckIn {
   zoneName: string;
   message: string;
   timestamp: string;
-  type: 'manual' | 'zone_enter' | 'sos';
+  type: "manual" | "zone_enter" | "sos";
   latitude?: number;
   longitude?: number;
 }
@@ -275,7 +275,7 @@ export type FinanceCategory = string;
 export interface FinanceTransaction {
   id: string;
   title?: string;
-  type: 'in' | 'out';
+  type: "in" | "out";
   amount: number;
   category: FinanceCategory;
   memberId?: string;
@@ -314,14 +314,14 @@ export interface FamilyWallet {
 }
 
 export type NotificationCategory =
-  | 'family'
-  | 'calendar'
-  | 'chat'
-  | 'task'
-  | 'safety'
-  | 'memories'
-  | 'event'
-  | 'message';
+  | "family"
+  | "calendar"
+  | "chat"
+  | "task"
+  | "safety"
+  | "memories"
+  | "event"
+  | "message";
 
 export interface AppNotification {
   id: string;
@@ -338,9 +338,9 @@ export interface AppNotification {
 }
 
 export interface AppSettings {
-  theme: 'light' | 'dark' | 'system';
-  textSize: 'standard' | 'large';
-  textMode?: 'standard' | 'large';
+  theme: "light" | "dark" | "system";
+  textSize: "standard" | "large";
+  textMode?: "standard" | "large";
   notificationsEnabled?: boolean;
   pushNotifications: boolean;
   calendarReminders: boolean;
@@ -353,4 +353,3 @@ export interface AppSettings {
   currentUserId: string; // active simulated member
   isLoggedIn?: boolean;
 }
-

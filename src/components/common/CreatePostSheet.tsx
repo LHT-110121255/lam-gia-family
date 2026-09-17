@@ -60,8 +60,8 @@ const PRIVACY_OPTIONS: {
   },
   {
     id: "parents",
-    label: "Chỉ Bố Mẹ",
-    desc: "Chỉ Bố & Mẹ và người đăng xem được",
+    label: "Chỉ Tỉa Mẹ",
+    desc: "Chỉ Tỉa & Mẹ và người đăng xem được",
     icon: Shield,
     color: "text-purple-600 bg-purple-50 border-purple-200",
   },
@@ -166,7 +166,11 @@ export const CreatePostSheet: React.FC<CreatePostSheetProps> = ({
     <BottomSheet
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditMode ? "Chỉnh sửa bài viết & Kỷ niệm" : "Chia sẻ khoảnh khắc gia đình"}
+      title={
+        isEditMode
+          ? "Chỉnh sửa bài viết & Kỷ niệm"
+          : "Chia sẻ khoảnh khắc gia đình"
+      }
     >
       <form onSubmit={handleSubmit} className="space-y-4 text-xs">
         {/* Author Header */}
@@ -181,7 +185,9 @@ export const CreatePostSheet: React.FC<CreatePostSheetProps> = ({
               {currentMember.name}
             </span>
             <span className="text-[10px] text-stone-500">
-              {isEditMode ? "Đang cập nhật bài viết" : "Đăng lên bảng tin gia đình"}
+              {isEditMode
+                ? "Đang cập nhật bài viết"
+                : "Đăng lên bảng tin gia đình"}
             </span>
           </div>
           {isEditMode && (

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { FamilyInfo, FamilyMember, MemoryAlbum } from '../../types';
-import { Avatar } from '../common/Avatar';
+import React, { useState } from "react";
+import { FamilyInfo, FamilyMember, MemoryAlbum } from "../../types";
+import { Avatar } from "../common/Avatar";
 import {
   Phone,
   MessageCircle,
@@ -16,9 +16,9 @@ import {
   Layers,
   Sparkles,
   Edit3,
-} from 'lucide-react';
-import { Modal } from '../common/Modal';
-import { EditFamilyModal } from '../family/EditFamilyModal';
+} from "lucide-react";
+import { Modal } from "../common/Modal";
+import { EditFamilyModal } from "../family/EditFamilyModal";
 
 interface FamilyScreenProps {
   familyInfo: FamilyInfo;
@@ -39,14 +39,14 @@ export const FamilyScreen: React.FC<FamilyScreenProps> = ({
   onStartChatWith,
   onUpdateFamilyInfo,
 }) => {
-  const [viewMode, setViewMode] = useState<'list' | 'tree'>('tree');
+  const [viewMode, setViewMode] = useState<"list" | "tree">("tree");
   const [treeZoom, setTreeZoom] = useState(1);
   const [isEditFamilyOpen, setIsEditFamilyOpen] = useState(false);
 
   // Group members by generations for the visual Tree
   // Gen 1: Ông Bà
   const gen1 = members.filter((m) => m.generation === 1);
-  // Gen 2: Bố Mẹ & Cô Chú
+  // Gen 2: Tỉa Mẹ & Cô Chú
   const gen2 = members.filter((m) => m.generation === 2);
   // Gen 3: Con Cháu
   const gen3 = members.filter((m) => m.generation === 3);
@@ -102,21 +102,21 @@ export const FamilyScreen: React.FC<FamilyScreenProps> = ({
         {/* Tab switch: Cây Gia Phả vs Danh sách thành viên */}
         <div className="flex items-center gap-2 mt-4 p-1 bg-stone-100 rounded-xl">
           <button
-            onClick={() => setViewMode('tree')}
+            onClick={() => setViewMode("tree")}
             className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition ${
-              viewMode === 'tree'
-                ? 'bg-white text-orange-600 shadow-xs'
-                : 'text-stone-600 hover:text-stone-900'
+              viewMode === "tree"
+                ? "bg-white text-orange-600 shadow-xs"
+                : "text-stone-600 hover:text-stone-900"
             }`}
           >
             🌳 Cây gia phả trực quan
           </button>
           <button
-            onClick={() => setViewMode('list')}
+            onClick={() => setViewMode("list")}
             className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition ${
-              viewMode === 'list'
-                ? 'bg-white text-orange-600 shadow-xs'
-                : 'text-stone-600 hover:text-stone-900'
+              viewMode === "list"
+                ? "bg-white text-orange-600 shadow-xs"
+                : "text-stone-600 hover:text-stone-900"
             }`}
           >
             👥 Danh sách thành viên ({members.length})
@@ -125,7 +125,7 @@ export const FamilyScreen: React.FC<FamilyScreenProps> = ({
       </section>
 
       {/* 2. Interactive Family Tree View */}
-      {viewMode === 'tree' && (
+      {viewMode === "tree" && (
         <section className="bg-white rounded-3xl p-4 border border-stone-200/70 shadow-xs relative overflow-hidden">
           {/* Zoom controls */}
           <div className="flex items-center justify-between pb-2 border-b border-stone-100 mb-3">
@@ -174,10 +174,14 @@ export const FamilyScreen: React.FC<FamilyScreenProps> = ({
                       src={m.avatar}
                       name={m.name}
                       size="md"
-                      online={m.onlineStatus === 'online'}
+                      online={m.onlineStatus === "online"}
                     />
-                    <span className="text-xs font-bold text-stone-900 mt-1.5">{m.relationship}</span>
-                    <span className="text-[11px] text-stone-600 truncate max-w-[90px]">{m.name}</span>
+                    <span className="text-xs font-bold text-stone-900 mt-1.5">
+                      {m.relationship}
+                    </span>
+                    <span className="text-[11px] text-stone-600 truncate max-w-[90px]">
+                      {m.name}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -186,10 +190,10 @@ export const FamilyScreen: React.FC<FamilyScreenProps> = ({
             {/* Tree Branch Line */}
             <div className="w-0.5 h-4 bg-stone-300 mx-auto -my-1" />
 
-            {/* Generation 2: Bố Mẹ & Cô Chú */}
+            {/* Generation 2: Tỉa Mẹ & Cô Chú */}
             <div className="text-center my-4">
               <span className="text-[10px] uppercase font-bold tracking-wider text-blue-800 bg-blue-100/70 px-2.5 py-0.5 rounded-full">
-                Thế hệ 2 • Bố Mẹ & Cô Chú
+                Thế hệ 2 • Tỉa Mẹ & Cô Chú
               </span>
               <div className="flex items-center justify-center gap-3 mt-2.5">
                 {gen2.map((m) => (
@@ -202,10 +206,14 @@ export const FamilyScreen: React.FC<FamilyScreenProps> = ({
                       src={m.avatar}
                       name={m.name}
                       size="md"
-                      online={m.onlineStatus === 'online'}
+                      online={m.onlineStatus === "online"}
                     />
-                    <span className="text-xs font-bold text-stone-900 mt-1.5">{m.relationship}</span>
-                    <span className="text-[11px] text-stone-600 truncate max-w-[85px]">{m.name}</span>
+                    <span className="text-xs font-bold text-stone-900 mt-1.5">
+                      {m.relationship}
+                    </span>
+                    <span className="text-[11px] text-stone-600 truncate max-w-[85px]">
+                      {m.name}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -230,10 +238,14 @@ export const FamilyScreen: React.FC<FamilyScreenProps> = ({
                       src={m.avatar}
                       name={m.name}
                       size="md"
-                      online={m.onlineStatus === 'online'}
+                      online={m.onlineStatus === "online"}
                     />
-                    <span className="text-xs font-bold text-stone-900 mt-1.5">{m.relationship}</span>
-                    <span className="text-[11px] text-stone-600 truncate max-w-[85px]">{m.name}</span>
+                    <span className="text-xs font-bold text-stone-900 mt-1.5">
+                      {m.relationship}
+                    </span>
+                    <span className="text-[11px] text-stone-600 truncate max-w-[85px]">
+                      {m.name}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -243,7 +255,7 @@ export const FamilyScreen: React.FC<FamilyScreenProps> = ({
       )}
 
       {/* 3. Member Directory List View */}
-      {viewMode === 'list' && (
+      {viewMode === "list" && (
         <section className="space-y-2.5">
           {members.map((member) => (
             <div
@@ -256,7 +268,7 @@ export const FamilyScreen: React.FC<FamilyScreenProps> = ({
                   src={member.avatar}
                   name={member.name}
                   size="md"
-                  online={member.onlineStatus === 'online'}
+                  online={member.onlineStatus === "online"}
                 />
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -270,7 +282,7 @@ export const FamilyScreen: React.FC<FamilyScreenProps> = ({
                   <div className="flex items-center gap-3 text-xs text-stone-500 mt-0.5">
                     <span className="flex items-center gap-1 truncate">
                       <MapPin className="w-3 h-3 text-stone-400" />
-                      {member.currentZone || 'Đang ở nhà'}
+                      {member.currentZone || "Đang ở nhà"}
                     </span>
                     {member.batteryLevel !== undefined && (
                       <span className="flex items-center gap-1 font-mono text-[10px]">
@@ -301,7 +313,7 @@ export const FamilyScreen: React.FC<FamilyScreenProps> = ({
                 src={selectedMember.avatar}
                 name={selectedMember.name}
                 size="lg"
-                online={selectedMember.onlineStatus === 'online'}
+                online={selectedMember.onlineStatus === "online"}
                 relationship={selectedMember.relationship}
               />
               <div className="min-w-0 flex-1">
@@ -311,11 +323,13 @@ export const FamilyScreen: React.FC<FamilyScreenProps> = ({
                   </h3>
                 </div>
                 <p className="text-xs font-medium text-orange-600">
-                  {selectedMember.relationship} • Thế hệ thứ {selectedMember.generation}
+                  {selectedMember.relationship} • Thế hệ thứ{" "}
+                  {selectedMember.generation}
                 </p>
                 <p className="text-[11px] text-stone-500 mt-0.5 flex items-center gap-1">
                   <Calendar className="w-3 h-3 text-stone-400" />
-                  Sinh ngày: {selectedMember.birthDate.split('-').reverse().join('/')}
+                  Sinh ngày:{" "}
+                  {selectedMember.birthDate.split("-").reverse().join("/")}
                 </p>
               </div>
             </div>
@@ -323,7 +337,7 @@ export const FamilyScreen: React.FC<FamilyScreenProps> = ({
             {/* Direct Action Buttons: Call & Chat */}
             <div className="grid grid-cols-2 gap-2.5">
               <a
-                href={`tel:${selectedMember.phone.replace(/\s+/g, '')}`}
+                href={`tel:${selectedMember.phone.replace(/\s+/g, "")}`}
                 className="flex items-center justify-center gap-2 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition active:scale-95"
               >
                 <Phone className="w-3.5 h-3.5" />
@@ -347,13 +361,15 @@ export const FamilyScreen: React.FC<FamilyScreenProps> = ({
                 <span className="text-stone-500">Trạng thái hiện tại:</span>
                 <span className="font-semibold text-emerald-700 flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  {selectedMember.onlineStatus === 'online' ? 'Đang hoạt động' : 'Ngoại tuyến'}
+                  {selectedMember.onlineStatus === "online"
+                    ? "Đang hoạt động"
+                    : "Ngoại tuyến"}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-stone-500">Vị trí / Vùng an toàn:</span>
                 <span className="font-semibold text-stone-900 truncate max-w-[180px]">
-                  {selectedMember.currentZone || 'Nhà chính (Đội Cấn)'}
+                  {selectedMember.currentZone || "Nhà chính (Đội Cấn)"}
                 </span>
               </div>
               {selectedMember.isEmergencyContact && (
@@ -367,7 +383,9 @@ export const FamilyScreen: React.FC<FamilyScreenProps> = ({
             {/* Notes & Hobbies */}
             {selectedMember.notes && (
               <div>
-                <h5 className="text-xs font-bold text-stone-900 mb-1">Ghi chú quan tâm:</h5>
+                <h5 className="text-xs font-bold text-stone-900 mb-1">
+                  Ghi chú quan tâm:
+                </h5>
                 <p className="text-xs text-stone-600 leading-relaxed bg-amber-50/50 p-2.5 rounded-xl border border-amber-100">
                   {selectedMember.notes}
                 </p>
@@ -376,7 +394,9 @@ export const FamilyScreen: React.FC<FamilyScreenProps> = ({
 
             {selectedMember.hobbies && selectedMember.hobbies.length > 0 && (
               <div>
-                <h5 className="text-xs font-bold text-stone-900 mb-1.5">Sở thích & Niềm vui:</h5>
+                <h5 className="text-xs font-bold text-stone-900 mb-1.5">
+                  Sở thích & Niềm vui:
+                </h5>
                 <div className="flex flex-wrap gap-1.5">
                   {selectedMember.hobbies.map((h, i) => (
                     <span

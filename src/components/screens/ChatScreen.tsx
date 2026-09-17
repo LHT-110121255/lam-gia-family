@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ChatRoom, ChatMessage, FamilyMember } from '../../types';
-import { Avatar } from '../common/Avatar';
+import React, { useState, useEffect, useRef } from "react";
+import { ChatRoom, ChatMessage, FamilyMember } from "../../types";
+import { Avatar } from "../common/Avatar";
 import {
   Send,
   AlertTriangle,
@@ -27,12 +27,12 @@ import {
   LogOut,
   Camera,
   Loader2,
-} from 'lucide-react';
-import { BottomSheet } from '../common/BottomSheet';
-import { Modal } from '../common/Modal';
-import { api } from '../../services/api';
-import { familyService } from '../../services/familyService';
-import { socketService } from '../../services/socket';
+} from "lucide-react";
+import { BottomSheet } from "../common/BottomSheet";
+import { Modal } from "../common/Modal";
+import { api } from "../../services/api";
+import { familyService } from "../../services/familyService";
+import { socketService } from "../../services/socket";
 
 interface ChatScreenProps {
   rooms: ChatRoom[];
@@ -46,10 +46,10 @@ interface ChatScreenProps {
     message: {
       text: string;
       priority?: boolean;
-      type?: ChatMessage['type'];
+      type?: ChatMessage["type"];
       mediaUrl?: string;
       mediaUrls?: string[];
-    }
+    },
   ) => void;
   onToggleReaction: (roomId: string, messageId: string, emoji: string) => void;
   onDeleteMessage?: (roomId: string, messageId: string) => void;
@@ -57,7 +57,7 @@ interface ChatScreenProps {
   onUnpinMessage?: (roomId: string) => void;
   onCreateRoom?: (room: {
     name: string;
-    type: ChatRoom['type'];
+    type: ChatRoom["type"];
     memberIds: string[];
     description?: string;
   }) => void;
@@ -69,14 +69,14 @@ interface ChatScreenProps {
 }
 
 const ELDER_QUICK_MESSAGES = [
-  'Bố mẹ đã ăn cơm chưa ạ? 🍚',
-  'Con đang trên đường về nhà rồi nhé! 🛵',
-  'Hôm nay trời trở gió, cả nhà nhớ mặc ấm nhé! 🧣',
-  'Cả nhà ơi tối nay có ăn cơm đông đủ không? 🍲',
-  'Con đã mua thuốc cho Ông Bà rồi nhé! 💊',
+  "Tỉa mẹ đã ăn cơm chưa ạ? 🍚",
+  "Con đang trên đường về nhà rồi nhé! 🛵",
+  "Hôm nay trời trở gió, cả nhà nhớ mặc ấm nhé! 🧣",
+  "Cả nhà ơi tối nay có ăn cơm đông đủ không? 🍲",
+  "Con đã mua thuốc cho Ông Bà rồi nhé! 💊",
 ];
 
-const REACTION_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🙏'];
+const REACTION_EMOJIS = ["❤️", "👍", "😂", "😮", "😢", "🙏"];
 
 export const ChatScreen: React.FC<ChatScreenProps> = ({
   rooms,
@@ -98,12 +98,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   onBackToRooms,
 }) => {
   // Navigation State: 'list' (Rooms Hub) or 'room' (Inside specific Chat Room)
-  const [viewMode, setViewMode] = useState<'list' | 'room'>('list');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'group' | 'direct'>('all');
+  const [viewMode, setViewMode] = useState<"list" | "room">("list");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState<"all" | "group" | "direct">(
+    "all",
+  );
 
   // Chat Input State
-  const [inputText, setInputText] = useState('');
+  const [inputText, setInputText] = useState("");
   const [isPriority, setIsPriority] = useState(false);
   const [uploadingImages, setUploadingImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -114,31 +116,38 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);
   const [showRoomSettingsSheet, setShowRoomSettingsSheet] = useState(false);
   const [showAddMembersModal, setShowAddMembersModal] = useState(false);
-  const [activeMessageMenuId, setActiveMessageMenuId] = useState<string | null>(null);
+  const [activeMessageMenuId, setActiveMessageMenuId] = useState<string | null>(
+    null,
+  );
 
   // Create Room Form State
-  const [newRoomName, setNewRoomName] = useState('');
-  const [newRoomType, setNewRoomType] = useState<ChatRoom['type']>('custom');
-  const [newRoomSelectedMembers, setNewRoomSelectedMembers] = useState<string[]>([]);
-  const [newRoomDesc, setNewRoomDesc] = useState('');
+  const [newRoomName, setNewRoomName] = useState("");
+  const [newRoomType, setNewRoomType] = useState<ChatRoom["type"]>("custom");
+  const [newRoomSelectedMembers, setNewRoomSelectedMembers] = useState<
+    string[]
+  >([]);
+  const [newRoomDesc, setNewRoomDesc] = useState("");
 
   // Edit Room Form State
-  const [editRoomName, setEditRoomName] = useState('');
-  const [editRoomDesc, setEditRoomDesc] = useState('');
+  const [editRoomName, setEditRoomName] = useState("");
+  const [editRoomDesc, setEditRoomDesc] = useState("");
   const [isEditingRoomInfo, setIsEditingRoomInfo] = useState(false);
 
   // Selected Members to Add State
-  const [selectedMembersToAdd, setSelectedMembersToAdd] = useState<string[]>([]);
+  const [selectedMembersToAdd, setSelectedMembersToAdd] = useState<string[]>(
+    [],
+  );
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  const activeRoom = rooms.find((r) => r.id === activeRoomId) || rooms[0] || {
-    id: 'room-all',
-    name: 'Đại Gia Đình Họ Lâm',
-    type: 'all' as const,
-    memberIds: allMembers.map((m) => m.id),
-    unreadCount: 0,
-  };
+  const activeRoom = rooms.find((r) => r.id === activeRoomId) ||
+    rooms[0] || {
+      id: "room-all",
+      name: "Đại Gia Đình Họ Lâm",
+      type: "all" as const,
+      memberIds: allMembers.map((m) => m.id),
+      unreadCount: 0,
+    };
 
   // Typing state
   const [typingUsers, setTypingUsers] = useState<Record<string, string>>({});
@@ -148,21 +157,25 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   useEffect(() => {
     socketService.connect(currentMember.id);
 
-    const unsubTyping = socketService.onUserTyping(({ roomId, userId, name }) => {
-      if (roomId === activeRoom.id && userId !== currentMember.id) {
-        setTypingUsers((prev) => ({ ...prev, [userId]: name }));
-      }
-    });
+    const unsubTyping = socketService.onUserTyping(
+      ({ roomId, userId, name }) => {
+        if (roomId === activeRoom.id && userId !== currentMember.id) {
+          setTypingUsers((prev) => ({ ...prev, [userId]: name }));
+        }
+      },
+    );
 
-    const unsubStopTyping = socketService.onUserStopTyping(({ roomId, userId }) => {
-      if (roomId === activeRoom.id) {
-        setTypingUsers((prev) => {
-          const next = { ...prev };
-          delete next[userId];
-          return next;
-        });
-      }
-    });
+    const unsubStopTyping = socketService.onUserStopTyping(
+      ({ roomId, userId }) => {
+        if (roomId === activeRoom.id) {
+          setTypingUsers((prev) => {
+            const next = { ...prev };
+            delete next[userId];
+            return next;
+          });
+        }
+      },
+    );
 
     return () => {
       unsubTyping();
@@ -172,11 +185,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
   // Scroll to bottom and mark room as read when messages change
   useEffect(() => {
-    if (viewMode === 'room') {
+    if (viewMode === "room") {
       socketService.joinRoom(activeRoom.id);
       familyService.markRoomAsRead(activeRoom.id);
       if (messagesContainerRef.current) {
-        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        messagesContainerRef.current.scrollTop =
+          messagesContainerRef.current.scrollHeight;
       }
     }
   }, [messages, activeRoomId, viewMode, activeRoom.id]);
@@ -185,7 +199,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   useEffect(() => {
     if (activeRoom) {
       setEditRoomName(activeRoom.name);
-      setEditRoomDesc(activeRoom.description || '');
+      setEditRoomDesc(activeRoom.description || "");
     }
   }, [activeRoom]);
 
@@ -221,11 +235,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     onSendMessage(activeRoom.id, {
       text: inputText.trim(),
       priority: isPriority,
-      type: isPriority ? 'priority' : uploadingImages.length > 0 ? 'image' : 'text',
+      type: isPriority
+        ? "priority"
+        : uploadingImages.length > 0
+          ? "image"
+          : "text",
       mediaUrls: uploadingImages.length > 0 ? uploadingImages : undefined,
     });
 
-    setInputText('');
+    setInputText("");
     setUploadingImages([]);
     setIsPriority(false);
   };
@@ -235,11 +253,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     if (!files || files.length === 0) return;
     setIsUploading(true);
     try {
-      const uploadPromises = Array.from(files).map((file) => api.uploadFile(file));
+      const uploadPromises = Array.from(files).map((file) =>
+        api.uploadFile(file),
+      );
       const urls = await Promise.all(uploadPromises);
       setUploadingImages((prev) => [...prev, ...urls]);
     } catch (err) {
-      console.error('Lỗi tải ảnh chat:', err);
+      console.error("Lỗi tải ảnh chat:", err);
     } finally {
       setIsUploading(false);
     }
@@ -248,8 +268,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   // Voice Simulation
   const handleSendVoiceSim = () => {
     onSendMessage(activeRoom.id, {
-      text: 'Tin nhắn thoại (0:14s)',
-      type: 'voice',
+      text: "Tin nhắn thoại (0:14s)",
+      type: "voice",
     });
   };
 
@@ -268,9 +288,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     }
 
     setShowCreateRoomModal(false);
-    setNewRoomName('');
+    setNewRoomName("");
     setNewRoomSelectedMembers([]);
-    setNewRoomDesc('');
+    setNewRoomDesc("");
   };
 
   // Filtered Rooms with Zalo style filters
@@ -278,13 +298,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     const matchSearch =
       !searchQuery.trim() ||
       r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (r.lastMessage && r.lastMessage.toLowerCase().includes(searchQuery.toLowerCase()));
+      (r.lastMessage &&
+        r.lastMessage.toLowerCase().includes(searchQuery.toLowerCase()));
 
     if (!matchSearch) return false;
 
-    if (filterType === 'group') return r.type !== 'direct';
-    if (filterType === 'direct') return r.type === 'direct';
-    if ((filterType as any) === 'unread') return (r.unreadCount || 0) > 0;
+    if (filterType === "group") return r.type !== "direct";
+    if (filterType === "direct") return r.type === "direct";
+    if ((filterType as any) === "unread") return (r.unreadCount || 0) > 0;
     return true;
   });
 
@@ -293,7 +314,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       {/* =========================================================================
           VIEW 1: ROOMS HUB & MANAGEMENT LIST (ZALO STYLE)
       ========================================================================= */}
-      {viewMode === 'list' ? (
+      {viewMode === "list" ? (
         <div className="flex flex-col h-full flex-1 min-h-0 bg-white overflow-hidden">
           {/* Header Bar Zalo Style */}
           <div className="px-3.5 py-2.5 bg-white border-b border-stone-200/70 flex items-center justify-between shrink-0 shadow-2xs">
@@ -343,7 +364,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               />
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => setSearchQuery("")}
                   className="p-0.5 text-stone-400 hover:text-stone-600"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -353,78 +374,82 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
             {/* Quick Online Members Bar (Zalo Active Family Contacts) */}
             <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
-              {allMembers.filter((m) => m.id !== currentMember.id).map((member) => (
-                <button
-                  key={member.id}
-                  onClick={() => {
-                    const directRoom = rooms.find(
-                      (r) => r.type === 'direct' && r.memberIds.includes(member.id)
-                    );
-                    if (directRoom) {
-                      onSelectRoom(directRoom.id);
-                      setViewMode('room');
-                    } else if (onCreateRoom) {
-                      onCreateRoom({
-                        name: member.name,
-                        type: 'direct',
-                        memberIds: [currentMember.id, member.id],
-                      });
-                    }
-                  }}
-                  className="flex flex-col items-center shrink-0 group focus:outline-hidden"
-                >
-                  <Avatar
-                    src={member.avatar}
-                    name={member.name}
-                    size="md"
-                    online={member.onlineStatus === 'online'}
-                    className="group-hover:scale-105 transition-transform"
-                  />
-                  <span className="text-[10px] font-medium text-stone-700 mt-1 max-w-[56px] truncate text-center">
-                    {member.name.split(' ').slice(-1)[0]}
-                  </span>
-                </button>
-              ))}
+              {allMembers
+                .filter((m) => m.id !== currentMember.id)
+                .map((member) => (
+                  <button
+                    key={member.id}
+                    onClick={() => {
+                      const directRoom = rooms.find(
+                        (r) =>
+                          r.type === "direct" &&
+                          r.memberIds.includes(member.id),
+                      );
+                      if (directRoom) {
+                        onSelectRoom(directRoom.id);
+                        setViewMode("room");
+                      } else if (onCreateRoom) {
+                        onCreateRoom({
+                          name: member.name,
+                          type: "direct",
+                          memberIds: [currentMember.id, member.id],
+                        });
+                      }
+                    }}
+                    className="flex flex-col items-center shrink-0 group focus:outline-hidden"
+                  >
+                    <Avatar
+                      src={member.avatar}
+                      name={member.name}
+                      size="md"
+                      online={member.onlineStatus === "online"}
+                      className="group-hover:scale-105 transition-transform"
+                    />
+                    <span className="text-[10px] font-medium text-stone-700 mt-1 max-w-[56px] truncate text-center">
+                      {member.name.split(" ").slice(-1)[0]}
+                    </span>
+                  </button>
+                ))}
             </div>
 
             {/* Zalo Filter Tabs: Tất cả, Chưa đọc, Nhóm, Chat 1-1 */}
             <div className="flex items-center gap-1.5 pt-0.5 border-t border-stone-100">
               <button
-                onClick={() => setFilterType('all')}
+                onClick={() => setFilterType("all")}
                 className={`px-3 py-1 rounded-full text-xs font-bold transition ${
-                  filterType === 'all'
-                    ? 'bg-orange-600 text-white shadow-2xs'
-                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200/70'
+                  filterType === "all"
+                    ? "bg-orange-600 text-white shadow-2xs"
+                    : "bg-stone-100 text-stone-600 hover:bg-stone-200/70"
                 }`}
               >
                 Tất cả ({rooms.length})
               </button>
               <button
-                onClick={() => setFilterType('unread' as any)}
+                onClick={() => setFilterType("unread" as any)}
                 className={`px-3 py-1 rounded-full text-xs font-bold transition ${
-                  (filterType as any) === 'unread'
-                    ? 'bg-orange-600 text-white shadow-2xs'
-                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200/70'
+                  (filterType as any) === "unread"
+                    ? "bg-orange-600 text-white shadow-2xs"
+                    : "bg-stone-100 text-stone-600 hover:bg-stone-200/70"
                 }`}
               >
                 Chưa đọc
               </button>
               <button
-                onClick={() => setFilterType('group')}
+                onClick={() => setFilterType("group")}
                 className={`px-3 py-1 rounded-full text-xs font-bold transition ${
-                  filterType === 'group'
-                    ? 'bg-orange-600 text-white shadow-2xs'
-                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200/70'
+                  filterType === "group"
+                    ? "bg-orange-600 text-white shadow-2xs"
+                    : "bg-stone-100 text-stone-600 hover:bg-stone-200/70"
                 }`}
               >
                 Nhóm
               </button>
               <button
-                onClick={() => setFilterType('direct')}
+                onClick={() => setFilterType("direct")}
                 className={`px-3 py-1 rounded-full text-xs font-bold transition ${
-                  filterType === 'direct'
-                    ? 'bg-orange-600 text-white shadow-2xs'
-                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200/70'
+                  filterType === "direct"
+                    ? "bg-orange-600 text-white shadow-2xs"
+                    : "bg-stone-100 text-stone-600 hover:bg-stone-200/70"
                 }`}
               >
                 Chat 1-1
@@ -450,9 +475,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             ) : (
               filteredRooms.map((room) => {
                 const isSelected = room.id === activeRoom.id;
-                const isDirect = room.type === 'direct';
+                const isDirect = room.type === "direct";
                 const otherMember = isDirect
-                  ? allMembers.find((m) => room.memberIds.includes(m.id) && m.id !== currentMember.id)
+                  ? allMembers.find(
+                      (m) =>
+                        room.memberIds.includes(m.id) &&
+                        m.id !== currentMember.id,
+                    )
                   : null;
 
                 return (
@@ -460,10 +489,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     key={room.id}
                     onClick={() => {
                       onSelectRoom(room.id);
-                      setViewMode('room');
+                      setViewMode("room");
                     }}
                     className={`px-3.5 py-3 hover:bg-stone-50 transition cursor-pointer flex items-center justify-between gap-3 ${
-                      isSelected ? 'bg-orange-50/50' : ''
+                      isSelected ? "bg-orange-50/50" : ""
                     }`}
                   >
                     {/* Room Avatar */}
@@ -473,7 +502,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                           src={otherMember.avatar}
                           name={otherMember.name}
                           size="lg"
-                          online={otherMember.onlineStatus === 'online'}
+                          online={otherMember.onlineStatus === "online"}
                         />
                       ) : room.avatar ? (
                         <img
@@ -497,17 +526,25 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     {/* Room Details */}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <h4 className={`text-xs font-bold truncate ${room.unreadCount > 0 ? 'text-stone-900 font-black' : 'text-stone-800'}`}>
-                          {isDirect && otherMember ? otherMember.name : room.name}
+                        <h4
+                          className={`text-xs font-bold truncate ${room.unreadCount > 0 ? "text-stone-900 font-black" : "text-stone-800"}`}
+                        >
+                          {isDirect && otherMember
+                            ? otherMember.name
+                            : room.name}
                         </h4>
-                        <span className={`text-[10px] shrink-0 font-medium ${room.unreadCount > 0 ? 'text-orange-600 font-bold' : 'text-stone-400'}`}>
-                          {room.lastMessageTime || '08:26'}
+                        <span
+                          className={`text-[10px] shrink-0 font-medium ${room.unreadCount > 0 ? "text-orange-600 font-bold" : "text-stone-400"}`}
+                        >
+                          {room.lastMessageTime || "08:26"}
                         </span>
                       </div>
 
                       <div className="flex items-center justify-between gap-2 mt-0.5">
-                        <p className={`text-xs truncate ${room.unreadCount > 0 ? 'font-extrabold text-stone-900' : 'text-stone-500'}`}>
-                          {room.lastMessage || 'Chưa có tin nhắn nào'}
+                        <p
+                          className={`text-xs truncate ${room.unreadCount > 0 ? "font-extrabold text-stone-900" : "text-stone-500"}`}
+                        >
+                          {room.lastMessage || "Chưa có tin nhắn nào"}
                         </p>
 
                         {room.pinnedMessageText && (
@@ -530,7 +567,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           <div className="px-3 py-2.5 bg-white border-b border-stone-200/80 flex items-center justify-between shrink-0 gap-2 shadow-2xs">
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <button
-                onClick={() => setViewMode('list')}
+                onClick={() => setViewMode("list")}
                 className="p-1 text-stone-700 hover:text-orange-600 rounded-xl hover:bg-orange-50 active:scale-95 transition shrink-0 flex items-center gap-0.5 font-bold text-xs"
                 title="Danh sách phòng"
               >
@@ -547,7 +584,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 </h3>
                 <p className="text-[10px] text-stone-500 flex items-center gap-1 truncate">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0" />
-                  <span>{activeRoom.memberIds.length} thành viên • Bấm xem cài đặt</span>
+                  <span>
+                    {activeRoom.memberIds.length} thành viên • Bấm xem cài đặt
+                  </span>
                 </p>
               </div>
             </div>
@@ -569,8 +608,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             <div className="px-3 py-1.5 bg-amber-50/90 border-b border-amber-200/80 flex items-center justify-between text-xs text-amber-950 shrink-0">
               <div className="flex items-center gap-1.5 truncate flex-1 mr-2">
                 <Pin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span className="font-bold text-[10px] text-amber-800 shrink-0">Đã ghim:</span>
-                <span className="truncate text-[11px] font-medium">{activeRoom.pinnedMessageText}</span>
+                <span className="font-bold text-[10px] text-amber-800 shrink-0">
+                  Đã ghim:
+                </span>
+                <span className="truncate text-[11px] font-medium">
+                  {activeRoom.pinnedMessageText}
+                </span>
               </div>
               {onUnpinMessage && (
                 <button
@@ -600,7 +643,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 const isMe = msg.senderId === currentMember.id;
                 const sender = getMember(msg.senderId);
 
-                if (msg.type === 'system') {
+                if (msg.type === "system") {
                   return (
                     <div key={msg.id} className="flex justify-center my-2">
                       <span className="px-3 py-1 bg-stone-200/70 text-stone-600 text-[10px] rounded-full font-medium shadow-2xs">
@@ -613,12 +656,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 return (
                   <div
                     key={msg.id}
-                    className={`flex items-end gap-2 group ${isMe ? 'justify-end' : 'justify-start'}`}
+                    className={`flex items-end gap-2 group ${isMe ? "justify-end" : "justify-start"}`}
                   >
                     {!isMe && (
                       <Avatar
-                        src={sender?.avatar || ''}
-                        name={sender?.name || 'Thành viên'}
+                        src={sender?.avatar || ""}
+                        name={sender?.name || "Thành viên"}
                         size="xs"
                         className="mb-1 shrink-0"
                       />
@@ -635,11 +678,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       <div
                         className={`rounded-2xl p-3 shadow-2xs relative space-y-1.5 ${
                           msg.priority
-                            ? 'bg-rose-50 border-2 border-rose-400 text-rose-950'
+                            ? "bg-rose-50 border-2 border-rose-400 text-rose-950"
                             : isMe
-                            ? 'bg-orange-600 text-white rounded-br-xs'
-                            : 'bg-white text-stone-900 border border-stone-200/80 rounded-bl-xs'
-                        } ${msg.isDeleted ? 'opacity-60 italic' : ''}`}
+                              ? "bg-orange-600 text-white rounded-br-xs"
+                              : "bg-white text-stone-900 border border-stone-200/80 rounded-bl-xs"
+                        } ${msg.isDeleted ? "opacity-60 italic" : ""}`}
                       >
                         {/* Priority Badge */}
                         {msg.priority && !msg.isDeleted && (
@@ -650,24 +693,28 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                         )}
 
                         {/* Image Attachments */}
-                        {msg.mediaUrls && msg.mediaUrls.length > 0 && !msg.isDeleted && (
-                          <div
-                            className={`grid gap-1.5 rounded-xl overflow-hidden ${
-                              msg.mediaUrls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
-                            }`}
-                          >
-                            {msg.mediaUrls.map((url, i) => (
-                              <img
-                                key={i}
-                                src={url}
-                                alt="Ảnh gửi"
-                                onClick={() => setLightboxPhoto(url)}
-                                className="w-full max-h-48 object-cover rounded-xl cursor-pointer hover:opacity-95 transition"
-                                loading="lazy"
-                              />
-                            ))}
-                          </div>
-                        )}
+                        {msg.mediaUrls &&
+                          msg.mediaUrls.length > 0 &&
+                          !msg.isDeleted && (
+                            <div
+                              className={`grid gap-1.5 rounded-xl overflow-hidden ${
+                                msg.mediaUrls.length === 1
+                                  ? "grid-cols-1"
+                                  : "grid-cols-2"
+                              }`}
+                            >
+                              {msg.mediaUrls.map((url, i) => (
+                                <img
+                                  key={i}
+                                  src={url}
+                                  alt="Ảnh gửi"
+                                  onClick={() => setLightboxPhoto(url)}
+                                  className="w-full max-h-48 object-cover rounded-xl cursor-pointer hover:opacity-95 transition"
+                                  loading="lazy"
+                                />
+                              ))}
+                            </div>
+                          )}
 
                         {/* Message Text */}
                         {msg.text && (
@@ -677,15 +724,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                         )}
 
                         {/* Audio Voice simulation */}
-                        {msg.type === 'voice' && !msg.isDeleted && (
+                        {msg.type === "voice" && !msg.isDeleted && (
                           <div className="flex items-center gap-2 py-1">
                             <button
                               type="button"
                               onClick={() =>
-                                setPlayingVoiceId(playingVoiceId === msg.id ? null : msg.id)
+                                setPlayingVoiceId(
+                                  playingVoiceId === msg.id ? null : msg.id,
+                                )
                               }
                               className={`w-7 h-7 rounded-full flex items-center justify-center transition shrink-0 ${
-                                isMe ? 'bg-white/20 text-white' : 'bg-orange-100 text-orange-600'
+                                isMe
+                                  ? "bg-white/20 text-white"
+                                  : "bg-orange-100 text-orange-600"
                               }`}
                             >
                               {playingVoiceId === msg.id ? (
@@ -695,7 +746,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                               )}
                             </button>
                             <span className="text-[10px] opacity-80">
-                              {playingVoiceId === msg.id ? 'Đang phát...' : 'Ghi âm 0:14s'}
+                              {playingVoiceId === msg.id
+                                ? "Đang phát..."
+                                : "Ghi âm 0:14s"}
                             </span>
                           </div>
                         )}
@@ -703,11 +756,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                         {/* Timestamp & Status */}
                         <div
                           className={`flex items-center justify-end gap-1 text-[9px] ${
-                            isMe ? 'text-white/75' : 'text-stone-400'
+                            isMe ? "text-white/75" : "text-stone-400"
                           }`}
                         >
                           <span>{msg.timestamp}</span>
-                          {isMe && <CheckCheck className="w-3 h-3 text-white/90" />}
+                          {isMe && (
+                            <CheckCheck className="w-3 h-3 text-white/90" />
+                          )}
                         </div>
 
                         {/* Message Reactions Display */}
@@ -717,7 +772,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                               <span
                                 key={i}
                                 className={`text-[11px] px-1.5 py-0.2 rounded-full ${
-                                  isMe ? 'bg-black/20 text-white' : 'bg-stone-100 text-stone-800'
+                                  isMe
+                                    ? "bg-black/20 text-white"
+                                    : "bg-stone-100 text-stone-800"
                                 }`}
                               >
                                 {r.emoji}
@@ -731,14 +788,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       {!msg.isDeleted && (
                         <div
                           className={`flex items-center gap-1 text-[10px] pt-0.5 ${
-                            isMe ? 'justify-end' : 'justify-start'
+                            isMe ? "justify-end" : "justify-start"
                           }`}
                         >
                           {/* Quick Reactions */}
                           {REACTION_EMOJIS.slice(0, 3).map((emoji) => (
                             <button
                               key={emoji}
-                              onClick={() => onToggleReaction(activeRoom.id, msg.id, emoji)}
+                              onClick={() =>
+                                onToggleReaction(activeRoom.id, msg.id, emoji)
+                              }
                               className="p-0.5 hover:scale-125 transition"
                             >
                               {emoji}
@@ -748,7 +807,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                           {/* Pin Message */}
                           {onPinMessage && (
                             <button
-                              onClick={() => onPinMessage(activeRoom.id, msg.id, msg.text || '📷 Hình ảnh')}
+                              onClick={() =>
+                                onPinMessage(
+                                  activeRoom.id,
+                                  msg.id,
+                                  msg.text || "📷 Hình ảnh",
+                                )
+                              }
                               className="p-1 text-stone-400 hover:text-amber-600 rounded-md"
                               title="Ghim tin nhắn"
                             >
@@ -759,7 +824,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                           {/* Delete/Recall message for own */}
                           {isMe && onDeleteMessage && (
                             <button
-                              onClick={() => onDeleteMessage(activeRoom.id, msg.id)}
+                              onClick={() =>
+                                onDeleteMessage(activeRoom.id, msg.id)
+                              }
                               className="p-1 text-stone-400 hover:text-red-600 rounded-md"
                               title="Thu hồi tin nhắn"
                             >
@@ -782,7 +849,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   <span className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-bounce [animation-delay:0.2s]" />
                   <span className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-bounce [animation-delay:0.4s]" />
                 </div>
-                <span>{Object.values(typingUsers).join(', ')} đang soạn tin...</span>
+                <span>
+                  {Object.values(typingUsers).join(", ")} đang soạn tin...
+                </span>
               </div>
             )}
           </div>
@@ -791,10 +860,21 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           {uploadingImages.length > 0 && (
             <div className="px-3 py-1.5 bg-stone-100 border-t border-stone-200 flex gap-2 overflow-x-auto shrink-0">
               {uploadingImages.map((imgUrl, i) => (
-                <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden border border-stone-300 shrink-0">
-                  <img src={imgUrl} alt="Preview" className="w-full h-full object-cover" />
+                <div
+                  key={i}
+                  className="relative w-16 h-16 rounded-xl overflow-hidden border border-stone-300 shrink-0"
+                >
+                  <img
+                    src={imgUrl}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                  />
                   <button
-                    onClick={() => setUploadingImages((prev) => prev.filter((_, idx) => idx !== i))}
+                    onClick={() =>
+                      setUploadingImages((prev) =>
+                        prev.filter((_, idx) => idx !== i),
+                      )
+                    }
                     className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/70 text-white flex items-center justify-center text-[10px]"
                   >
                     <X className="w-3 h-3" />
@@ -818,7 +898,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           </div>
 
           {/* 7. Input Bar (Zalo Style) */}
-          <form onSubmit={handleSend} className="px-3 pb-2 pt-1 shrink-0 bg-white border-t border-stone-100">
+          <form
+            onSubmit={handleSend}
+            className="px-3 pb-2 pt-1 shrink-0 bg-white border-t border-stone-100"
+          >
             <div className="bg-stone-50 rounded-2xl border border-stone-200/90 p-1.5 flex items-center gap-1.5 shadow-2xs">
               {/* Attach Image Button */}
               <label className="p-2 text-stone-500 hover:text-orange-600 rounded-xl hover:bg-stone-100 cursor-pointer transition shrink-0">
@@ -843,8 +926,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 onClick={() => setIsPriority(!isPriority)}
                 className={`p-2 rounded-xl transition shrink-0 ${
                   isPriority
-                    ? 'bg-red-500 text-white shadow-2xs'
-                    : 'text-stone-500 hover:text-red-500 hover:bg-stone-100'
+                    ? "bg-red-500 text-white shadow-2xs"
+                    : "text-stone-500 hover:text-red-500 hover:bg-stone-100"
                 }`}
                 title="Đánh dấu tin nhắn khẩn cấp"
               >
@@ -858,7 +941,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 onChange={handleInputChange}
                 placeholder={
                   isPriority
-                    ? 'Gõ tin nhắn khẩn cấp cho cả phòng...'
+                    ? "Gõ tin nhắn khẩn cấp cho cả phòng..."
                     : `Nhắn tin cho ${activeRoom.name}...`
                 }
                 className="flex-1 min-w-0 text-xs bg-transparent focus:outline-hidden text-stone-900 placeholder:text-stone-400"
@@ -897,26 +980,32 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       >
         <form onSubmit={handleCreateRoomSubmit} className="space-y-4 text-xs">
           <div>
-            <label className="font-bold text-stone-800 block mb-1">Tên phòng chat *</label>
+            <label className="font-bold text-stone-800 block mb-1">
+              Tên phòng chat *
+            </label>
             <input
               type="text"
               required
               value={newRoomName}
               onChange={(e) => setNewRoomName(e.target.value)}
-              placeholder="VD: Gia đình Bố Mẹ & Các Con, Anh Chị Em,..."
+              placeholder="VD: Gia đình Tỉa Mẹ & Các Con, Anh Chị Em,..."
               className="w-full p-2.5 bg-stone-50 border border-stone-200 rounded-xl focus:border-orange-500 focus:bg-white text-stone-900 text-xs"
             />
           </div>
 
           <div>
-            <label className="font-bold text-stone-800 block mb-1">Loại phòng</label>
+            <label className="font-bold text-stone-800 block mb-1">
+              Loại phòng
+            </label>
             <select
               value={newRoomType}
-              onChange={(e) => setNewRoomType(e.target.value as ChatRoom['type'])}
+              onChange={(e) =>
+                setNewRoomType(e.target.value as ChatRoom["type"])
+              }
               className="w-full p-2.5 bg-stone-50 border border-stone-200 rounded-xl text-stone-800 text-xs"
             >
               <option value="custom">Nhóm tùy chỉnh</option>
-              <option value="parents">Nhóm Bố Mẹ / Phụ huynh</option>
+              <option value="parents">Nhóm Tỉa Mẹ / Phụ huynh</option>
               <option value="siblings">Nhóm Anh Chị Em</option>
               <option value="direct">Trò chuyện riêng 1-1</option>
             </select>
@@ -924,7 +1013,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
           <div>
             <label className="font-bold text-stone-800 block mb-1">
-              Chọn thành viên tham gia ({newRoomSelectedMembers.length} đã chọn) *
+              Chọn thành viên tham gia ({newRoomSelectedMembers.length} đã chọn)
+              *
             </label>
             <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 bg-stone-50 rounded-2xl border border-stone-200">
               {allMembers.map((m) => {
@@ -935,21 +1025,27 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     key={m.id}
                     onClick={() => {
                       if (isSelected) {
-                        setNewRoomSelectedMembers((prev) => prev.filter((id) => id !== m.id));
+                        setNewRoomSelectedMembers((prev) =>
+                          prev.filter((id) => id !== m.id),
+                        );
                       } else {
                         setNewRoomSelectedMembers((prev) => [...prev, m.id]);
                       }
                     }}
                     className={`p-2 rounded-xl border flex items-center gap-2 transition text-left ${
                       isSelected
-                        ? 'bg-orange-50 border-orange-500 text-orange-950 font-bold'
-                        : 'bg-white border-stone-200 hover:bg-stone-100 text-stone-700'
+                        ? "bg-orange-50 border-orange-500 text-orange-950 font-bold"
+                        : "bg-white border-stone-200 hover:bg-stone-100 text-stone-700"
                     }`}
                   >
                     <Avatar src={m.avatar} name={m.name} size="xs" />
                     <div className="min-w-0 flex-1">
-                      <span className="text-[11px] block truncate">{m.name}</span>
-                      <span className="text-[9px] text-stone-400 block">{m.relationship}</span>
+                      <span className="text-[11px] block truncate">
+                        {m.name}
+                      </span>
+                      <span className="text-[9px] text-stone-400 block">
+                        {m.relationship}
+                      </span>
                     </div>
                   </button>
                 );
@@ -958,7 +1054,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           </div>
 
           <div>
-            <label className="font-bold text-stone-800 block mb-1">Mô tả phòng (tùy chọn)</label>
+            <label className="font-bold text-stone-800 block mb-1">
+              Mô tả phòng (tùy chọn)
+            </label>
             <input
               type="text"
               value={newRoomDesc}
@@ -970,7 +1068,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
           <button
             type="submit"
-            disabled={!newRoomName.trim() || newRoomSelectedMembers.length === 0}
+            disabled={
+              !newRoomName.trim() || newRoomSelectedMembers.length === 0
+            }
             className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-bold rounded-2xl shadow-md shadow-orange-600/20 transition active:scale-95 flex items-center justify-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
@@ -998,9 +1098,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 {activeRoom.name.slice(0, 2).toUpperCase()}
               </div>
               <div>
-                <h3 className="font-bold text-stone-900 text-sm">{activeRoom.name}</h3>
+                <h3 className="font-bold text-stone-900 text-sm">
+                  {activeRoom.name}
+                </h3>
                 <p className="text-[10px] text-stone-500">
-                  {activeRoom.memberIds.length} thành viên • {activeRoom.description || 'Phòng chat nội bộ'}
+                  {activeRoom.memberIds.length} thành viên •{" "}
+                  {activeRoom.description || "Phòng chat nội bộ"}
                 </p>
               </div>
             </div>
@@ -1018,7 +1121,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           {isEditingRoomInfo && onUpdateRoom && (
             <div className="p-3 bg-orange-50/70 rounded-2xl border border-orange-200 space-y-2">
               <div>
-                <label className="font-bold text-stone-800 block mb-1">Đổi tên phòng</label>
+                <label className="font-bold text-stone-800 block mb-1">
+                  Đổi tên phòng
+                </label>
                 <input
                   type="text"
                   value={editRoomName}
@@ -1027,7 +1132,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 />
               </div>
               <div>
-                <label className="font-bold text-stone-800 block mb-1">Mô tả phòng</label>
+                <label className="font-bold text-stone-800 block mb-1">
+                  Mô tả phòng
+                </label>
                 <input
                   type="text"
                   value={editRoomDesc}
@@ -1074,7 +1181,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 const member = getMember(mId);
                 if (!member) return null;
                 const isMe = member.id === currentMember.id;
-                const isAdmin = activeRoom.adminIds?.includes(mId) || activeRoom.createdById === mId;
+                const isAdmin =
+                  activeRoom.adminIds?.includes(mId) ||
+                  activeRoom.createdById === mId;
 
                 return (
                   <div
@@ -1082,10 +1191,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     className="p-2.5 flex items-center justify-between gap-2 hover:bg-white transition"
                   >
                     <div className="flex items-center gap-2.5">
-                      <Avatar src={member.avatar} name={member.name} size="xs" />
+                      <Avatar
+                        src={member.avatar}
+                        name={member.name}
+                        size="xs"
+                      />
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-stone-900 text-xs">{member.name}</span>
+                          <span className="font-bold text-stone-900 text-xs">
+                            {member.name}
+                          </span>
                           {isMe && (
                             <span className="text-[9px] bg-orange-100 text-orange-800 px-1.5 py-0.2 rounded-md font-bold">
                               Bạn
@@ -1097,21 +1212,27 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                             </span>
                           )}
                         </div>
-                        <span className="text-[10px] text-stone-500">{member.relationship}</span>
+                        <span className="text-[10px] text-stone-500">
+                          {member.relationship}
+                        </span>
                       </div>
                     </div>
 
                     {/* Remove Member Button (If not main all-family room) */}
-                    {activeRoom.id !== 'room-all' && !isMe && onRemoveMemberFromRoom && (
-                      <button
-                        type="button"
-                        onClick={() => onRemoveMemberFromRoom(activeRoom.id, mId)}
-                        className="p-1.5 text-stone-400 hover:text-red-600 rounded-lg transition"
-                        title="Xóa khỏi phòng"
-                      >
-                        <UserMinus className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    {activeRoom.id !== "room-all" &&
+                      !isMe &&
+                      onRemoveMemberFromRoom && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onRemoveMemberFromRoom(activeRoom.id, mId)
+                          }
+                          className="p-1.5 text-stone-400 hover:text-red-600 rounded-lg transition"
+                          title="Xóa khỏi phòng"
+                        >
+                          <UserMinus className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                   </div>
                 );
               })}
@@ -1130,7 +1251,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 return acc;
               }, []);
 
-              const sharedLinks = messages.reduce<{ url: string; text: string }[]>((acc, m) => {
+              const sharedLinks = messages.reduce<
+                { url: string; text: string }[]
+              >((acc, m) => {
                 if (m.text) {
                   const matches = m.text.match(/(https?:\/\/[^\s]+)/g);
                   if (matches) {
@@ -1183,15 +1306,19 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           </div>
 
           {/* Delete Room Action */}
-          {activeRoom.id !== 'room-all' && onDeleteRoom && (
+          {activeRoom.id !== "room-all" && onDeleteRoom && (
             <div className="pt-2 border-t border-stone-100">
               <button
                 type="button"
                 onClick={() => {
-                  if (window.confirm(`Bạn có chắc chắn muốn xóa phòng chat "${activeRoom.name}"?`)) {
+                  if (
+                    window.confirm(
+                      `Bạn có chắc chắn muốn xóa phòng chat "${activeRoom.name}"?`,
+                    )
+                  ) {
                     onDeleteRoom(activeRoom.id);
                     setShowRoomSettingsSheet(false);
-                    setViewMode('list');
+                    setViewMode("list");
                   }
                 }}
                 className="w-full py-2.5 px-3 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 font-bold rounded-xl text-xs transition flex items-center justify-center gap-2"
@@ -1217,7 +1344,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       >
         <div className="space-y-4 text-xs">
           <p className="text-stone-500">
-            Chọn thành viên trong gia đình để thêm vào phòng "{activeRoom.name}":
+            Chọn thành viên trong gia đình để thêm vào phòng "{activeRoom.name}
+            ":
           </p>
 
           <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 bg-stone-50 rounded-2xl border border-stone-200">
@@ -1231,21 +1359,27 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     key={m.id}
                     onClick={() => {
                       if (isSelected) {
-                        setSelectedMembersToAdd((prev) => prev.filter((id) => id !== m.id));
+                        setSelectedMembersToAdd((prev) =>
+                          prev.filter((id) => id !== m.id),
+                        );
                       } else {
                         setSelectedMembersToAdd((prev) => [...prev, m.id]);
                       }
                     }}
                     className={`p-2 rounded-xl border flex items-center gap-2 transition text-left ${
                       isSelected
-                        ? 'bg-orange-50 border-orange-500 text-orange-950 font-bold'
-                        : 'bg-white border-stone-200 hover:bg-stone-100 text-stone-700'
+                        ? "bg-orange-50 border-orange-500 text-orange-950 font-bold"
+                        : "bg-white border-stone-200 hover:bg-stone-100 text-stone-700"
                     }`}
                   >
                     <Avatar src={m.avatar} name={m.name} size="xs" />
                     <div className="min-w-0 flex-1">
-                      <span className="text-[11px] block truncate">{m.name}</span>
-                      <span className="text-[9px] text-stone-400 block">{m.relationship}</span>
+                      <span className="text-[11px] block truncate">
+                        {m.name}
+                      </span>
+                      <span className="text-[9px] text-stone-400 block">
+                        {m.relationship}
+                      </span>
                     </div>
                   </button>
                 );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Heart,
   Phone,
@@ -14,36 +14,60 @@ import {
   CheckCircle2,
   X,
   Fingerprint,
-} from 'lucide-react';
-import { FamilyMember, MemberRole } from '../../types';
-import { Avatar } from '../common/Avatar';
-import { LocationInput } from '../common/LocationInput';
-import { familyService } from '../../services/familyService';
+} from "lucide-react";
+import { FamilyMember, MemberRole } from "../../types";
+import { Avatar } from "../common/Avatar";
+import { LocationInput } from "../common/LocationInput";
+import { familyService } from "../../services/familyService";
 
 export const AVATAR_PRESETS = [
-  { label: 'Bố', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=240&auto=format&fit=crop&q=80' },
-  { label: 'Mẹ', url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=240&auto=format&fit=crop&q=80' },
-  { label: 'Ông', url: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=240&auto=format&fit=crop&q=80' },
-  { label: 'Bà', url: 'https://images.unsplash.com/photo-1566616213894-2d4e1baee5d8?w=240&auto=format&fit=crop&q=80' },
-  { label: 'Con gái', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=240&auto=format&fit=crop&q=80' },
-  { label: 'Con trai', url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=240&auto=format&fit=crop&q=80' },
-  { label: 'Thanh niên', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=240&auto=format&fit=crop&q=80' },
-  { label: 'Bé con', url: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=240&auto=format&fit=crop&q=80' },
+  {
+    label: "Tỉa",
+    url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=240&auto=format&fit=crop&q=80",
+  },
+  {
+    label: "Mẹ",
+    url: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=240&auto=format&fit=crop&q=80",
+  },
+  {
+    label: "Ông",
+    url: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=240&auto=format&fit=crop&q=80",
+  },
+  {
+    label: "Bà",
+    url: "https://images.unsplash.com/photo-1566616213894-2d4e1baee5d8?w=240&auto=format&fit=crop&q=80",
+  },
+  {
+    label: "Con gái",
+    url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=240&auto=format&fit=crop&q=80",
+  },
+  {
+    label: "Con trai",
+    url: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=240&auto=format&fit=crop&q=80",
+  },
+  {
+    label: "Thanh niên",
+    url: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=240&auto=format&fit=crop&q=80",
+  },
+  {
+    label: "Bé con",
+    url: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=240&auto=format&fit=crop&q=80",
+  },
 ];
 
 const RELATIONSHIP_OPTIONS = [
-  { label: 'Bố', role: 'parent' as MemberRole },
-  { label: 'Mẹ', role: 'parent' as MemberRole },
-  { label: 'Ông nội', role: 'elder' as MemberRole },
-  { label: 'Bà nội', role: 'elder' as MemberRole },
-  { label: 'Ông ngoại', role: 'elder' as MemberRole },
-  { label: 'Bà ngoại', role: 'elder' as MemberRole },
-  { label: 'Con trai', role: 'adult' as MemberRole },
-  { label: 'Con gái', role: 'adult' as MemberRole },
-  { label: 'Cháu trai', role: 'teen' as MemberRole },
-  { label: 'Cháu gái', role: 'child' as MemberRole },
-  { label: 'Dâu', role: 'adult' as MemberRole },
-  { label: 'Rể', role: 'adult' as MemberRole },
+  { label: "Tỉa", role: "parent" as MemberRole },
+  { label: "Mẹ", role: "parent" as MemberRole },
+  { label: "Ông nội", role: "elder" as MemberRole },
+  { label: "Bà nội", role: "elder" as MemberRole },
+  { label: "Ông ngoại", role: "elder" as MemberRole },
+  { label: "Bà ngoại", role: "elder" as MemberRole },
+  { label: "Con trai", role: "adult" as MemberRole },
+  { label: "Con gái", role: "adult" as MemberRole },
+  { label: "Cháu trai", role: "teen" as MemberRole },
+  { label: "Cháu gái", role: "child" as MemberRole },
+  { label: "Dâu", role: "adult" as MemberRole },
+  { label: "Rể", role: "adult" as MemberRole },
 ];
 
 interface AuthScreenProps {
@@ -57,75 +81,84 @@ interface AuthScreenProps {
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({
   allMembers,
-  familyName = 'Đại gia đình họ Nguyễn',
+  familyName = "Đại gia đình họ Nguyễn",
   onLoginSuccess,
   onRegisterSuccess,
   onClose,
   isModal = false,
 }) => {
-  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
+  const [activeTab, setActiveTab] = useState<"login" | "register">("login");
 
   // Login form state
-  const [loginIdentifier, setLoginIdentifier] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
+  const [loginIdentifier, setLoginIdentifier] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [loginError, setLoginError] = useState('');
+  const [loginError, setLoginError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   // Register form state
-  const [regUsername, setRegUsername] = useState('');
-  const [regName, setRegName] = useState('');
-  const [regRelationship, setRegRelationship] = useState('Con trai');
-  const [regRole, setRegRole] = useState<MemberRole>('adult');
-  const [regGender, setRegGender] = useState<'male' | 'female'>('male');
-  const [regPhone, setRegPhone] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regBirthDate, setRegBirthDate] = useState('');
-  const [regAddress, setRegAddress] = useState('');
-  const [regAvatar, setRegAvatar] = useState('https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&auto=format&fit=crop&q=80');
-  const [regPassword, setRegPassword] = useState('');
-  const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [regUsername, setRegUsername] = useState("");
+  const [regName, setRegName] = useState("");
+  const [regRelationship, setRegRelationship] = useState("Con trai");
+  const [regRole, setRegRole] = useState<MemberRole>("adult");
+  const [regGender, setRegGender] = useState<"male" | "female">("male");
+  const [regPhone, setRegPhone] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regBirthDate, setRegBirthDate] = useState("");
+  const [regAddress, setRegAddress] = useState("");
+  const [regAvatar, setRegAvatar] = useState(
+    "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&auto=format&fit=crop&q=80",
+  );
+  const [regPassword, setRegPassword] = useState("");
+  const [regConfirmPassword, setRegConfirmPassword] = useState("");
   const [showRegPassword, setShowRegPassword] = useState(false);
-  const [familyInviteCode, setFamilyInviteCode] = useState('LAM-GIA-DINH-2026');
-  const [regError, setRegError] = useState('');
-  const [registrationPendingSuccess, setRegistrationPendingSuccess] = useState(false);
-  const [pendingRegisteredName, setPendingRegisteredName] = useState('');
+  const [familyInviteCode, setFamilyInviteCode] = useState("LAM-GIA-DINH-2026");
+  const [regError, setRegError] = useState("");
+  const [registrationPendingSuccess, setRegistrationPendingSuccess] =
+    useState(false);
+  const [pendingRegisteredName, setPendingRegisteredName] = useState("");
 
   // Forgot password modal
   const [showForgotModal, setShowForgotModal] = useState(false);
-  const [forgotPhone, setForgotPhone] = useState('');
-  const [forgotStep, setForgotStep] = useState<'phone' | 'otp' | 'done'>('phone');
-  const [otpCode, setOtpCode] = useState('');
+  const [forgotPhone, setForgotPhone] = useState("");
+  const [forgotStep, setForgotStep] = useState<"phone" | "otp" | "done">(
+    "phone",
+  );
+  const [otpCode, setOtpCode] = useState("");
 
   // Handle Biometric Login
   const handleBiometricLogin = async () => {
     setIsLoading(true);
-    setLoginError('');
+    setLoginError("");
     try {
-      const { tokenStorage, api } = await import('../../services/api');
+      const { tokenStorage, api } = await import("../../services/api");
       const storedUser = tokenStorage.getUser();
       const token = tokenStorage.getAccessToken();
 
       if (token && storedUser) {
-        if (storedUser.approvalStatus === 'pending') {
+        if (storedUser.approvalStatus === "pending") {
           setIsLoading(false);
-          setLoginError('Tài khoản của bạn đang chờ Admin Lâm Huệ Trung phê duyệt.');
+          setLoginError(
+            "Tài khoản của bạn đang chờ Admin Lâm Huệ Trung phê duyệt.",
+          );
           return;
         }
         const member: FamilyMember = {
-          id: storedUser._id || storedUser.id || 'member-trung',
+          id: storedUser._id || storedUser.id || "member-trung",
           username: storedUser.username,
           name: storedUser.name,
-          relationship: storedUser.relationship || 'Thành viên',
-          role: storedUser.role || 'adult',
+          relationship: storedUser.relationship || "Thành viên",
+          role: storedUser.role || "adult",
           generation: storedUser.generation || 2,
-          avatar: storedUser.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300',
-          birthDate: storedUser.birthDate || '',
-          phone: storedUser.phone || '',
-          email: storedUser.email || '',
-          onlineStatus: 'online',
-          approvalStatus: storedUser.approvalStatus || 'approved',
+          avatar:
+            storedUser.avatar ||
+            "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
+          birthDate: storedUser.birthDate || "",
+          phone: storedUser.phone || "",
+          email: storedUser.email || "",
+          onlineStatus: "online",
+          approvalStatus: storedUser.approvalStatus || "approved",
           isAdmin: !!storedUser.isAdmin,
         };
         setIsLoading(false);
@@ -134,59 +167,73 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       }
 
       setIsLoading(false);
-      setLoginError('Chưa có phiên đăng nhập sinh trắc học đã lưu. Vui lòng đăng nhập bằng Tên tài khoản / Mật khẩu.');
+      setLoginError(
+        "Chưa có phiên đăng nhập sinh trắc học đã lưu. Vui lòng đăng nhập bằng Tên tài khoản / Mật khẩu.",
+      );
     } catch (err: any) {
       setIsLoading(false);
-      setLoginError(err.message || 'Xác thực sinh trắc học thất bại. Vui lòng đăng nhập bằng mật khẩu.');
+      setLoginError(
+        err.message ||
+          "Xác thực sinh trắc học thất bại. Vui lòng đăng nhập bằng mật khẩu.",
+      );
     }
   };
 
   // Handle Login Submit
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoginError('');
+    setLoginError("");
 
     if (!loginIdentifier.trim() || !loginPassword.trim()) {
-      setLoginError('Vui lòng nhập Tên tài khoản / SĐT và Mật khẩu');
+      setLoginError("Vui lòng nhập Tên tài khoản / SĐT và Mật khẩu");
       return;
     }
 
     setIsLoading(true);
     try {
-      const { api } = await import('../../services/api');
+      const { api } = await import("../../services/api");
       const res = await api.login(loginIdentifier.trim(), loginPassword.trim());
       setIsLoading(false);
 
       if (res && res.user) {
         const member: FamilyMember = {
-          id: res.user._id || 'member-' + Date.now(),
+          id: res.user._id || "member-" + Date.now(),
           username: res.user.username,
           name: res.user.name,
-          relationship: res.user.relationship || 'Thành viên',
-          role: res.user.role || 'adult',
+          relationship: res.user.relationship || "Thành viên",
+          role: res.user.role || "adult",
           generation: res.user.generation || 2,
-          avatar: res.user.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300',
-          birthDate: res.user.birthDate || '',
-          phone: res.user.phone || '',
-          email: res.user.email || '',
-          onlineStatus: 'online',
-          jobTitle: res.user.jobTitle || '',
-          locationAddress: res.user.address || '',
-          approvalStatus: res.user.approvalStatus || 'approved',
-          isAdmin: !!res.user.isAdmin || res.user.username === 'lamhuetrung',
+          avatar:
+            res.user.avatar ||
+            "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
+          birthDate: res.user.birthDate || "",
+          phone: res.user.phone || "",
+          email: res.user.email || "",
+          onlineStatus: "online",
+          jobTitle: res.user.jobTitle || "",
+          locationAddress: res.user.address || "",
+          approvalStatus: res.user.approvalStatus || "approved",
+          isAdmin: !!res.user.isAdmin || res.user.username === "lamhuetrung",
         };
         onLoginSuccess(member);
       } else {
-        setLoginError('Tài khoản hoặc mật khẩu không chính xác');
+        setLoginError("Tài khoản hoặc mật khẩu không chính xác");
       }
     } catch (err: any) {
       setIsLoading(false);
-      if (err.code === 'PENDING_APPROVAL') {
-        setLoginError('⏳ Tài khoản của bạn đang ở trạng thái CHỜ DUYỆT. Vui lòng liên hệ Admin Lâm Huệ Trung để được phê duyệt vào gia đình.');
-      } else if (err.code === 'ACCOUNT_REJECTED') {
-        setLoginError('❌ Tài khoản của bạn đã bị từ chối phê duyệt tham gia gia đình.');
+      if (err.code === "PENDING_APPROVAL") {
+        setLoginError(
+          "⏳ Tài khoản của bạn đang ở trạng thái CHỜ DUYỆT. Vui lòng liên hệ Admin Lâm Huệ Trung để được phê duyệt vào gia đình.",
+        );
+      } else if (err.code === "ACCOUNT_REJECTED") {
+        setLoginError(
+          "❌ Tài khoản của bạn đã bị từ chối phê duyệt tham gia gia đình.",
+        );
       } else {
-        setLoginError(err.message || 'Tài khoản hoặc mật khẩu không chính xác. Vui lòng thử lại.');
+        setLoginError(
+          err.message ||
+            "Tài khoản hoặc mật khẩu không chính xác. Vui lòng thử lại.",
+        );
       }
     }
   };
@@ -194,28 +241,28 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
   // Handle Register Submit
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setRegError('');
+    setRegError("");
 
     if (!regUsername.trim()) {
-      setRegError('Vui lòng nhập Tên tài khoản đăng nhập');
+      setRegError("Vui lòng nhập Tên tài khoản đăng nhập");
       return;
     }
     if (!regName.trim()) {
-      setRegError('Vui lòng nhập Họ và tên');
+      setRegError("Vui lòng nhập Họ và tên");
       return;
     }
     if (!regPassword.trim()) {
-      setRegError('Vui lòng nhập Mật khẩu');
+      setRegError("Vui lòng nhập Mật khẩu");
       return;
     }
     if (regPassword !== regConfirmPassword) {
-      setRegError('Mật khẩu xác nhận không khớp');
+      setRegError("Mật khẩu xác nhận không khớp");
       return;
     }
 
     setIsLoading(true);
     try {
-      const { api } = await import('../../services/api');
+      const { api } = await import("../../services/api");
       let registeredUser: any = null;
 
       try {
@@ -235,7 +282,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         registeredUser = res.user;
       } catch (apiErr: any) {
         // Fallback local register
-        console.warn('Backend register error, fallback local storage:', apiErr);
+        console.warn("Backend register error, fallback local storage:", apiErr);
       }
 
       // Lưu vào familyService local
@@ -255,7 +302,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       setRegistrationPendingSuccess(true);
     } catch (err: any) {
       setIsLoading(false);
-      setRegError(err.message || 'Đăng ký thất bại, vui lòng thử lại');
+      setRegError(err.message || "Đăng ký thất bại, vui lòng thử lại");
     }
   };
 
@@ -299,8 +346,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   Đăng Ký Thành Công!
                 </h2>
                 <p className="text-xs text-stone-600 leading-relaxed pt-1">
-                  Chúc mừng <strong className="text-stone-900">{pendingRegisteredName || regName}</strong>! Hồ sơ tài khoản của bạn đã được gửi tới{' '}
-                  <strong className="text-orange-600">Admin Lâm Huệ Trung</strong> để xác nhận và phê duyệt thành viên gia đình.
+                  Chúc mừng{" "}
+                  <strong className="text-stone-900">
+                    {pendingRegisteredName || regName}
+                  </strong>
+                  ! Hồ sơ tài khoản của bạn đã được gửi tới{" "}
+                  <strong className="text-orange-600">
+                    Admin Lâm Huệ Trung
+                  </strong>{" "}
+                  để xác nhận và phê duyệt thành viên gia đình.
                 </p>
               </div>
 
@@ -309,7 +363,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   <span>ℹ️ Lưu ý bảo mật gia đình:</span>
                 </div>
                 <p className="text-amber-800/90 leading-normal">
-                  Để đảm bảo an toàn riêng tư, chỉ những thành viên đã được Admin duyệt mới có thể đăng nhập xem lịch, bản đồ vị trí và tham gia chat.
+                  Để đảm bảo an toàn riêng tư, chỉ những thành viên đã được
+                  Admin duyệt mới có thể đăng nhập xem lịch, bản đồ vị trí và
+                  tham gia chat.
                 </p>
               </div>
 
@@ -317,10 +373,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 type="button"
                 onClick={() => {
                   setRegistrationPendingSuccess(false);
-                  setActiveTab('login');
+                  setActiveTab("login");
                   setLoginIdentifier(regUsername || regPhone);
-                  setLoginPassword('');
-                  setLoginError('');
+                  setLoginPassword("");
+                  setLoginError("");
                 }}
                 className="w-full py-3 bg-linear-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white font-bold rounded-2xl text-xs shadow-md shadow-orange-600/20 active:scale-95 transition flex items-center justify-center gap-2"
               >
@@ -333,12 +389,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               {/* Welcome Title */}
               <div className="text-center my-3">
                 <h2 className="text-2xl font-black text-stone-900 tracking-tight">
-                  {activeTab === 'login' ? 'Chào mừng bạn về nhà' : 'Tham gia cùng gia đình'}
+                  {activeTab === "login"
+                    ? "Chào mừng bạn về nhà"
+                    : "Tham gia cùng gia đình"}
                 </h2>
                 <p className="text-xs text-stone-500 mt-1 max-w-[260px] mx-auto">
-                  {activeTab === 'login'
-                    ? 'Không gian riêng tư, sum vầy và gắn kết ba thế hệ thân yêu'
-                    : 'Tạo tài khoản thành viên để chia sẻ lịch giỗ, kỷ niệm và việc nhà'}
+                  {activeTab === "login"
+                    ? "Không gian riêng tư, sum vầy và gắn kết ba thế hệ thân yêu"
+                    : "Tạo tài khoản thành viên để chia sẻ lịch giỗ, kỷ niệm và việc nhà"}
                 </p>
               </div>
 
@@ -347,13 +405,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveTab('login');
-                    setLoginError('');
+                    setActiveTab("login");
+                    setLoginError("");
                   }}
                   className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
-                    activeTab === 'login'
-                      ? 'bg-white text-orange-700 shadow-xs'
-                      : 'text-stone-600 hover:text-stone-900'
+                    activeTab === "login"
+                      ? "bg-white text-orange-700 shadow-xs"
+                      : "text-stone-600 hover:text-stone-900"
                   }`}
                 >
                   Đăng nhập
@@ -361,13 +419,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveTab('register');
-                    setRegError('');
+                    setActiveTab("register");
+                    setRegError("");
                   }}
                   className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
-                    activeTab === 'register'
-                      ? 'bg-white text-orange-700 shadow-xs'
-                      : 'text-stone-600 hover:text-stone-900'
+                    activeTab === "register"
+                      ? "bg-white text-orange-700 shadow-xs"
+                      : "text-stone-600 hover:text-stone-900"
                   }`}
                 >
                   Đăng ký thành viên
@@ -377,7 +435,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           )}
 
           {/* ==================== TAB 1: LOGIN ==================== */}
-          {!registrationPendingSuccess && activeTab === 'login' && (
+          {!registrationPendingSuccess && activeTab === "login" && (
             <form onSubmit={handleLoginSubmit} className="space-y-3.5">
               {loginError && (
                 <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-2xl flex items-start gap-2">
@@ -415,7 +473,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     type="button"
                     onClick={() => {
                       setForgotPhone(loginIdentifier);
-                      setForgotStep('phone');
+                      setForgotStep("phone");
                       setShowForgotModal(true);
                     }}
                     className="text-[11px] text-orange-600 hover:text-orange-700 font-semibold"
@@ -428,7 +486,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     <Lock className="w-4 h-4" />
                   </div>
                   <input
-                    type={showLoginPassword ? 'text' : 'password'}
+                    type={showLoginPassword ? "text" : "password"}
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     placeholder="Nhập mật khẩu..."
@@ -439,7 +497,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     onClick={() => setShowLoginPassword(!showLoginPassword)}
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-stone-400 hover:text-stone-600"
                   >
-                    {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showLoginPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -453,7 +515,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500 border-stone-300"
                   />
-                  <span className="text-xs text-stone-600">Ghi nhớ đăng nhập</span>
+                  <span className="text-xs text-stone-600">
+                    Ghi nhớ đăng nhập
+                  </span>
                 </label>
                 <span className="text-[10px] text-emerald-600 flex items-center gap-1 font-medium">
                   <ShieldCheck className="w-3.5 h-3.5" /> Mã hóa an toàn
@@ -485,12 +549,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 <Fingerprint className="w-4 h-4 text-orange-600" />
                 <span>Đăng nhập nhanh bằng FaceID / Vân tay</span>
               </button>
-
             </form>
           )}
 
           {/* ==================== TAB 2: REGISTER ==================== */}
-          {!registrationPendingSuccess && activeTab === 'register' && (
+          {!registrationPendingSuccess && activeTab === "register" && (
             <form onSubmit={handleRegisterSubmit} className="space-y-3">
               {regError && (
                 <div className="p-2.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-2xl flex items-start gap-2">
@@ -502,7 +565,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               {/* Username Input */}
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-stone-700 block">
-                  Tên tài khoản đăng nhập <span className="text-red-500">*</span>
+                  Tên tài khoản đăng nhập{" "}
+                  <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
@@ -511,7 +575,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   <input
                     type="text"
                     value={regUsername}
-                    onChange={(e) => setRegUsername(e.target.value.toLowerCase().trim())}
+                    onChange={(e) =>
+                      setRegUsername(e.target.value.toLowerCase().trim())
+                    }
                     placeholder="VD: lamhuetrung, honggam..."
                     className="w-full pl-9 pr-3 py-2.5 bg-white border border-stone-200 rounded-2xl text-xs text-stone-900 focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500 transition shadow-2xs font-mono font-bold"
                   />
@@ -539,18 +605,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
               {/* Gender selector */}
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-stone-700 block">Giới tính</label>
+                <label className="text-[11px] font-bold text-stone-700 block">
+                  Giới tính
+                </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => {
-                      setRegGender('male');
-                      setRegAvatar('https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&auto=format&fit=crop&q=80');
+                      setRegGender("male");
+                      setRegAvatar(
+                        "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&auto=format&fit=crop&q=80",
+                      );
                     }}
                     className={`py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border ${
-                      regGender === 'male'
-                        ? 'bg-orange-50 border-orange-500 text-orange-900 shadow-2xs'
-                        : 'bg-white border-stone-200 text-stone-600'
+                      regGender === "male"
+                        ? "bg-orange-50 border-orange-500 text-orange-900 shadow-2xs"
+                        : "bg-white border-stone-200 text-stone-600"
                     }`}
                   >
                     <span>👨 Nam</span>
@@ -558,13 +628,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      setRegGender('female');
-                      setRegAvatar('https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&auto=format&fit=crop&q=80');
+                      setRegGender("female");
+                      setRegAvatar(
+                        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&auto=format&fit=crop&q=80",
+                      );
                     }}
                     className={`py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border ${
-                      regGender === 'female'
-                        ? 'bg-orange-50 border-orange-500 text-orange-900 shadow-2xs'
-                        : 'bg-white border-stone-200 text-stone-600'
+                      regGender === "female"
+                        ? "bg-orange-50 border-orange-500 text-orange-900 shadow-2xs"
+                        : "bg-white border-stone-200 text-stone-600"
                     }`}
                   >
                     <span>👩 Nữ</span>
@@ -590,8 +662,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                         }}
                         className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold transition ${
                           isSelected
-                            ? 'bg-orange-600 text-white shadow-xs'
-                            : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
+                            ? "bg-orange-600 text-white shadow-xs"
+                            : "bg-white text-stone-700 border border-stone-200 hover:bg-stone-100"
                         }`}
                       >
                         {opt.label}
@@ -663,11 +735,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                         const file = e.target.files?.[0];
                         if (!file) return;
                         try {
-                          const { api } = await import('../../services/api');
+                          const { api } = await import("../../services/api");
                           const url = await api.uploadFile(file);
                           setRegAvatar(url);
                         } catch (err) {
-                          console.error('Upload avatar error:', err);
+                          console.error("Upload avatar error:", err);
                         }
                       }}
                     />
@@ -682,7 +754,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                         type="button"
                         onClick={() => setRegAvatar(preset.url)}
                         className={`relative rounded-full p-0.5 transition shrink-0 ${
-                          isSelected ? 'ring-2 ring-orange-500 ring-offset-2' : 'opacity-70 hover:opacity-100'
+                          isSelected
+                            ? "ring-2 ring-orange-500 ring-offset-2"
+                            : "opacity-70 hover:opacity-100"
                         }`}
                         title={preset.label}
                       >
@@ -706,9 +780,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               {/* Password & Confirm */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-stone-700 block">Mật khẩu</label>
+                  <label className="text-[11px] font-bold text-stone-700 block">
+                    Mật khẩu
+                  </label>
                   <input
-                    type={showRegPassword ? 'text' : 'password'}
+                    type={showRegPassword ? "text" : "password"}
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
                     placeholder="Mật khẩu"
@@ -716,9 +792,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-stone-700 block">Nhập lại</label>
+                  <label className="text-[11px] font-bold text-stone-700 block">
+                    Nhập lại
+                  </label>
                   <input
-                    type={showRegPassword ? 'text' : 'password'}
+                    type={showRegPassword ? "text" : "password"}
                     value={regConfirmPassword}
                     onChange={(e) => setRegConfirmPassword(e.target.value)}
                     placeholder="Nhập lại"
@@ -731,13 +809,17 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               <div className="space-y-1 pt-1">
                 <label className="text-[11px] font-bold text-stone-700 flex items-center justify-between">
                   <span>Mã gia đình (Đã tự động điền)</span>
-                  <span className="text-[10px] text-orange-600 font-semibold">Chung cây phả hệ</span>
+                  <span className="text-[10px] text-orange-600 font-semibold">
+                    Chung cây phả hệ
+                  </span>
                 </label>
                 <div className="relative">
                   <input
                     type="text"
                     value={familyInviteCode}
-                    onChange={(e) => setFamilyInviteCode(e.target.value.toUpperCase())}
+                    onChange={(e) =>
+                      setFamilyInviteCode(e.target.value.toUpperCase())
+                    }
                     className="w-full px-3 py-2 bg-amber-50/70 border border-amber-200 rounded-2xl text-xs font-mono font-bold text-amber-900 tracking-wider focus:outline-hidden"
                   />
                 </div>
@@ -773,7 +855,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-5 max-w-xs w-full shadow-2xl space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-stone-900">Khôi phục mật khẩu</h3>
+              <h3 className="text-sm font-bold text-stone-900">
+                Khôi phục mật khẩu
+              </h3>
               <button
                 onClick={() => setShowForgotModal(false)}
                 className="p-1 text-stone-400 hover:text-stone-600 rounded-full"
@@ -782,10 +866,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               </button>
             </div>
 
-            {forgotStep === 'phone' && (
+            {forgotStep === "phone" && (
               <div className="space-y-3 text-xs">
                 <p className="text-stone-600">
-                  Nhập số điện thoại đã đăng ký để nhận mã xác minh OTP 6 số qua tin nhắn:
+                  Nhập số điện thoại đã đăng ký để nhận mã xác minh OTP 6 số qua
+                  tin nhắn:
                 </p>
                 <input
                   type="text"
@@ -795,7 +880,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs"
                 />
                 <button
-                  onClick={() => setForgotStep('otp')}
+                  onClick={() => setForgotStep("otp")}
                   className="w-full py-2.5 bg-orange-600 text-white font-bold rounded-xl hover:bg-orange-700 transition"
                 >
                   Gửi mã OTP xác nhận
@@ -803,11 +888,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               </div>
             )}
 
-            {forgotStep === 'otp' && (
+            {forgotStep === "otp" && (
               <div className="space-y-3 text-xs">
                 <p className="text-stone-600">
-                  Mã OTP đã được gửi đến <strong>{forgotPhone || 'số điện thoại của bạn'}</strong>.
-                  (Mã mẫu thử nghiệm: <span className="font-mono text-orange-600 font-bold">123456</span>)
+                  Mã OTP đã được gửi đến{" "}
+                  <strong>{forgotPhone || "số điện thoại của bạn"}</strong>. (Mã
+                  mẫu thử nghiệm:{" "}
+                  <span className="font-mono text-orange-600 font-bold">
+                    123456
+                  </span>
+                  )
                 </p>
                 <input
                   type="text"
@@ -818,7 +908,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-center text-sm font-mono tracking-widest"
                 />
                 <button
-                  onClick={() => setForgotStep('done')}
+                  onClick={() => setForgotStep("done")}
                   className="w-full py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition"
                 >
                   Xác minh & Đặt lại
@@ -826,19 +916,23 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               </div>
             )}
 
-            {forgotStep === 'done' && (
+            {forgotStep === "done" && (
               <div className="space-y-3 text-center py-2">
                 <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
-                <p className="text-xs font-bold text-stone-900">Đặt lại mật khẩu thành công!</p>
+                <p className="text-xs font-bold text-stone-900">
+                  Đặt lại mật khẩu thành công!
+                </p>
                 <p className="text-[11px] text-stone-500">
-                  Mật khẩu mới của bạn đã được đặt là: <strong className="text-stone-800">123456</strong>. Bạn có thể đăng nhập ngay.
+                  Mật khẩu mới của bạn đã được đặt là:{" "}
+                  <strong className="text-stone-800">123456</strong>. Bạn có thể
+                  đăng nhập ngay.
                 </p>
                 <button
                   onClick={() => {
                     setShowForgotModal(false);
-                    setLoginPassword('123456');
+                    setLoginPassword("123456");
                   }}
                   className="w-full py-2 bg-orange-600 text-white font-bold rounded-xl text-xs"
                 >

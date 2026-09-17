@@ -2428,12 +2428,21 @@ class FamilyService {
   private chatSocketInitialized = false;
   private processedMsgIds = new Set<string>();
   private receiveMessageCleanup: (() => void) | null = null;
+  private lastSyncedRoomTimes = new Map<string, number>();
 
   public syncMessagesFromBackend(roomId: string): void {
+    if (!roomId) return;
+    const now = Date.now();
+    const lastSync = this.lastSyncedRoomTimes.get(roomId) || 0;
+    // Chặn spam: Chỉ gọi backend đồng bộ nếu cách lần gọi trước ít nhất 10 giây
+    if (now - lastSync < 10000) return;
+    this.lastSyncedRoomTimes.set(roomId, now);
+
     import('./api').then(({ api }) => {
       (api as any).getMessages?.(roomId).then((remoteMsgs: any[]) => {
         if (!Array.isArray(remoteMsgs) || remoteMsgs.length === 0) return;
         const all = load<Record<string, ChatMessage[]>>('chatMessages', INITIAL_MESSAGES);
+        const currentMsgs = all[roomId] || [];
         const mapped: ChatMessage[] = remoteMsgs.map((m: any) => ({
           id: m._id?.toString() || m.id,
           roomId: m.roomId || roomId,
@@ -2455,9 +2464,17 @@ class FamilyService {
           seen.add(m.id);
           return true;
         });
-        all[roomId] = deduped;
-        save('chatMessages', all);
-        this.notify();
+
+        // Chỉ lưu và thông báo UI nếu dữ liệu mới có sự khác biệt
+        const hasChange =
+          deduped.length !== currentMsgs.length ||
+          deduped.some((m, idx) => !currentMsgs[idx] || currentMsgs[idx].id !== m.id);
+
+        if (hasChange) {
+          all[roomId] = deduped;
+          save('chatMessages', all);
+          this.notify();
+        }
       }).catch(() => { /* Backend chưa có endpoint này, bỏ qua */ });
     });
   }

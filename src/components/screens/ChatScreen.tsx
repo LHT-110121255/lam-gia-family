@@ -184,16 +184,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     };
   }, [activeRoom.id, currentMember.id]);
 
-  // Scroll to bottom and mark room as read when messages change
+  // Vào phòng và đánh dấu đã đọc khi đổi phòng hoặc đổi chế độ xem
   useEffect(() => {
     if (viewMode === "room" && activeRoom.id) {
       familyService.enterRoom(activeRoom.id);
-      if (messagesContainerRef.current) {
-        messagesContainerRef.current.scrollTop =
-          messagesContainerRef.current.scrollHeight;
-      }
     }
-  }, [messages, activeRoomId, viewMode, activeRoom.id]);
+  }, [activeRoom.id, viewMode]);
+
+  // Cuộn xuống tin nhắn mới nhất khi danh sách tin nhắn thay đổi
+  useEffect(() => {
+    if (viewMode === "room" && messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop =
+        messagesContainerRef.current.scrollHeight;
+    }
+  }, [messages.length, viewMode]);
 
   // Sync active room name for editing
   useEffect(() => {

@@ -1,3 +1,5 @@
+import { io, Socket } from "socket.io-client";
+
 const getSocketUrl = () => {
   if (import.meta.env.VITE_SOCKET_URL) {
     return import.meta.env.VITE_SOCKET_URL;
